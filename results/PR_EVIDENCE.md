@@ -59,8 +59,8 @@
 | AC-003-11 | CR-002: Composite order total calculation | `src/calculator.py:calculate_order_total` | `tests/test_calculator.py:test_calculate_order_total_fixed_discount*` | RF-03 (SHOULD FIX, Resolved), RF-04 (SHOULD FIX, Resolved) |
 
 ## Remaining Risks / Technical Debt
-- Floating point arithmetic is constrained to IEEE 754 64-bit float with `round(..., 2)`. While standard across this library, large enterprise financial systems may eventually consider `decimal.Decimal` if arbitrary precision is mandated in future requirements.
-- No remaining MUST FIX or SHOULD FIX debts on this branch.
+- Using Python's standard `float` with `round(..., 2)` fits this library's current scope. If future requirements ever demand arbitrary precision, `decimal.Decimal` can be evaluated then.
+- No open MUST FIX or SHOULD FIX items remain on this branch.
 
 ## Final Human Decision
 [ ] NOT READY  
