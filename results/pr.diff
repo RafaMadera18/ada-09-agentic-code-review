@@ -1,4 +1,135 @@
-﻿diff --git a/CHANGE_REQUEST.md b/CHANGE_REQUEST.md
+﻿diff --git a/AI_USAGE_LOG.md b/AI_USAGE_LOG.md
+index 176d55e..91c0f10 100644
+--- a/AI_USAGE_LOG.md
++++ b/AI_USAGE_LOG.md
+@@ -1,53 +1,89 @@
+-# Registro de Uso de Inteligencia Artificial (AI Usage Log)
++# Registro de Uso de Inteligencia Artificial (AI Usage Log) - ADA-09
+ 
+-**Herramientas utilizadas:** Claude Code (Claude 3.5 Sonnet) como asistente de desarrollo y orquestaci├│n por CLI, y dos subagentes independientes de Claude Code ejecutados en entornos aislados para simular los roles de agentes desarrolladores en las condiciones BEFORE y AFTER.
+-
+-**Metodolog├¡a general:**
+-Para el desarrollo de esta pr├íctica (ADA-08: *Agent-Ready Repository*), utilic├® Claude Code como herramienta principal para estructurar y ejecutar la transformaci├│n del repositorio, la auditor├¡a de madurez y los experimentos comparativos. Mi rol consisti├│ en definir las instrucciones de inicio a partir de la gu├¡a del curso, seleccionar el proyecto base, supervisar las propuestas de dise├▒o y guardrails, validar la ejecuci├│n de pruebas y autorizar la publicaci├│n y versionado en GitHub.
++**Pr├íctica:** ADA-09 ┬À Agentic Code Review (Coder Agent -> Reviewer Agent -> Human Review)  
++**Herramientas utilizadas:** Antigravity (Gemini 3.8 Flash) operando en dos roles desacoplados: Coder Agent (fase de implementaci├│n y fix) y Reviewer Agent independiente (ejecutado en sesi├│n/subagente aislado de solo lectura), bajo supervisi├│n humana estricta en cada compuerta de decisi├│n (Human Gate 0, Human Review Decisions y Final Human Gate).  
++**Repositorio:** `ada-09-agentic-code-review`  
++**Rama de trabajo:** `ada09/cr-002`  
++**Commit base:** `0cd5e73`  
+ 
+ ---
+ 
+-## Entrada 1: Selecci├│n del repositorio base y congelamiento del baseline (29/10/2026)
+-
+-- **Trabajo realizado con el asistente:** Indiqu├® a Claude que utiliz├íramos el repositorio de la pr├íctica ADA-06 como base. Entre las carpetas disponibles (`ada06-github-mcp` que conten├¡a ├║nicamente documentaci├│n y `ada06-sample-repo` que contaba con c├│digo fuente y suite de pruebas), seleccionamos `ada06-sample-repo`. Se clon├│ el proyecto preservando el historial, se removi├│ el remoto de origen para protegerlo y se cre├│ la etiqueta `ada08-baseline`. Posteriormente se aline├│ la etiqueta con el commit que incorpora `TASK_UNDER_TEST.md`, asegurando que ambas corridas partieran del mismo requerimiento.
+-- **Decisi├│n y supervisi├│n:** Decid├¡ usar `ada06-sample-repo` por ser el proyecto funcional con pruebas unitarias en `src/calculator.py` y verifiqu├® que la etiqueta `ada08-baseline` quedara fijada en el commit `53d91b6`.
+-
+-## Entrada 2: Auditor├¡a inicial de madurez (Condici├│n BEFORE)
+-
+-- **Trabajo realizado con el asistente:** Se realiz├│ la auditor├¡a inicial del repositorio base siguiendo las 8 dimensiones y ponderaciones de la r├║brica del curso. Claude analiz├│ los archivos del baseline, corri├│ las 7 pruebas existentes y asign├│ la calificaci├│n inicial (30/100), fundamentando cada brecha con evidencia del c├│digo. Este reporte se registr├│ en un commit antes de iniciar las corridas de prueba para aislar el contexto del agente.
+-- **Decisi├│n y supervisi├│n:** Revis├® los criterios y acept├® la calificaci├│n de 30/100, validando que el puntaje de 3/5 en *Build / Run / Test* era el adecuado dado que solo exist├¡a el comando de tests, sin linter ni comando unificado de verificaci├│n.
++## 1. Entradas Significativas del Flujo Ag├®ntico
++
++### Entrada 1: Definici├│n y Refinamiento del Change Request (CR-002)
++- **Actividad:** Se defini├│ la propuesta de cambio acotada `CR-002: Fixed-Amount Discount Support` para extender REQ-003 mediante una funci├│n pura `apply_fixed_discount` y el par├ímetro opcional `fixed_discount: float = 0.0` en `calculate_order_total`, preservando compatibilidad regresiva y l├¡mites de `ARCHITECTURE.md`.
++- **Intervenci├│n y Decisi├│n Humana (Human Gate 0):** Como revisor humano evalu├® el alcance propuesto. Verifiqu├® que no intentara modificar `REQUIREMENTS.md` (archivo protegido) y autoric├® la adici├│n de los criterios de aceptaci├│n derivados `AC-003-8` a `AC-003-11` en `SPEC.md`. Firm├® formalmente la aprobaci├│n en `CHANGE_REQUEST.md` antes de habilitar la fase de codificaci├│n.
++
++### Entrada 2: Plan del Coder-Agent y Decisi├│n Humana sobre el Plan
++- **Actividad:** El Coder Agent inspeccion├│ el repositorio, las directrices de `AGENTS.md` y `SPEC.md`, y formul├│ un plan de trabajo de 6 pasos: actualizar `SPEC.md` y `TASKS.md`, implementar la funci├│n pura en `src/calculator.py`, integrar el argumento opcional en `calculate_order_total`, a├▒adir casos de prueba en `tests/test_calculator.py` y ejecutar la verificaci├│n determinista.
++- **Intervenci├│n y Decisi├│n Humana:** Aprob├® el plan del coder porque respetaba estrictamente la pureza arquitect├│nica (cero librer├¡as externas, sin I/O, sin estado global mutable) y no alteraba la firma posicional de `calculate_order_total` para invocadores existentes.
++
++### Entrada 3: Implementaci├│n del Coder-Agent y Candidate Commit
++- **Actividad:** El Coder Agent implement├│ la l├│gica en `src/calculator.py` y redact├│ cuatro pruebas unitarias en `tests/test_calculator.py`. Ejecut├│ la verificaci├│n determinista (31 tests en verde, compilaci├│n y scripts de contrato limpios) y redact├│ `results/coder-report.md`. Se gener├│ el commit candidato `cbef67d` (`feat: implement CR-002`) y los artefactos de revisi├│n `results/pr.diff` y `results/commits.txt`.
++- **Intervenci├│n y Decisi├│n Humana:** Verifiqu├® que el Verification Gate se ejecutara de forma determinista y registr├® el resultado en `results/verification-report.md`. Aunque los tests estaban en verde, rechac├® expl├¡citamente considerar el self-check del coder como una aprobaci├│n, habilitando la fase de revisi├│n independiente.
++
++### Entrada 4: Revisi├│n Independiente (Reviewer-Agent) y Detecci├│n de Falsa Confianza
++- **Actividad:** Se despleg├│ un Reviewer Agent en un subagente de solo lectura (`research`), estableciendo previamente el `results/review-contract.md`. El revisor inspeccion├│ el diff, requisitos y pruebas, descubriendo que el coder omiti├│ la validaci├│n expl├¡cita `if amount < 0:` en `apply_fixed_discount`. Al invocar `apply_fixed_discount(-50.0, 0.0)`, el c├│digo ca├¡a en `fixed_discount > amount` arrojando un error enga├▒oso (`Fixed discount cannot exceed amount`). Asimismo, detect├│ que el coder no teste├│ montos negativos, generando una falsa sensaci├│n de cobertura.
++- **Hallazgos:** El reviewer categoriz├│:
++  - `RF-01` (MUST FIX): Omisi├│n de validaci├│n de monto negativo en `apply_fixed_discount`.
++  - `RF-02` (MUST FIX): Brecha en pruebas / falsa confianza al no probar montos negativos.
++  - `RF-03` (SHOULD FIX): Falta de pruebas de integraci├│n compuestas en `calculate_order_total`.
++  - `RF-04` (SHOULD FIX): Docstring desactualizado en `calculate_order_total`.
++  - `RF-05` (OPTIONAL): Ausencia de casos con fracciones de centavos en redondeo.
++  - Recomendaci├│n: `READY AFTER MUST FIX`.
++
++### Entrada 5: Decisi├│n Humana sobre los Hallazgos (Human Review Decisions)
++- **Actividad:** Como ingeniero humano evalu├® cada finding del reporte independiente y document├® las decisiones en `results/human-review-decisions.md`.
++- **Decisi├│n y Supervisi├│n:**
++  - `RF-01`: **ACCEPTED**. La evidencia demostr├│ que el error lanzado era confuso y violaba `AC-003-9` y las convenciones de diagn├│stico de `ARCHITECTURE.md`.
++  - `RF-02`: **ACCEPTED**. Fundamental para evitar regresiones y garantizar que la suite pruebe el comportamiento real.
++  - `RF-03`: **ACCEPTED**. Imprescindible para asegurar que descuentos fijos mayores al remanente tras descuento porcentual fallen de forma controlada.
++  - `RF-04`: **MODIFIED**. Acept├® corregir el docstring, pero instru├¡ mantenerlo conciso (2 oraciones) seg├║n el estilo existente del archivo, en lugar de descripciones redundantes.
++  - `RF-05`: **ACCEPTED**. Acept├® a├▒adir la aserci├│n de centavos fraccionarios por su bajo costo y beneficio de regresi├│n.
++  - Compuerta: Se activ├│ la orden de retorno al Coder Agent (`Return to coder-agent`).
++
++### Entrada 6: Fix Cycle, Re-review y PR Evidence
++- **Actividad:** El Coder Agent recibi├│ exclusivamente los findings aceptados y modificados. Modific├│ `src/calculator.py` para validar `amount < 0`, actualiz├│ el docstring, y a├▒adi├│ las pruebas unitarias y de integraci├│n en `tests/test_calculator.py` (elevando la suite a 34 tests). Cre├│ el commit `3a9b999` (`fix: address ADA-09 review findings`). Posteriormente, el Reviewer Agent realiz├│ el Re-review en `results/re-review-report.md`, certificando los 5 hallazgos como `RESOLVED` sin nuevas regresiones.
++- **Decisi├│n y Supervisi├│n (Final Human Gate):** Audit├® el expediente completo en `results/PR_EVIDENCE.md` y firm├® la decisi├│n final como `READY FOR HUMAN MERGE`.
+ 
+-## Entrada 3: Dise├▒o del Change Request de prueba (CR-001)
+-
+-- **Trabajo realizado con el asistente:** Analizamos las opciones de tareas para medir la autonom├¡a y fricci├│n del agente. Descartamos "implementar descuento" porque la funci├│n `apply_discount` ya exist├¡a en el c├│digo (a pesar de que `SPEC.md` la marcaba como pendiente). Formulamos el Change Request CR-001 para a├▒adir `calculate_order_total(prices, discount_percent=0.0, tax_rate=0.0)` en `src/calculator.py`, referenciando los requerimientos existentes REQ-001 a REQ-003 sin alterarlos. Claude comprob├│ previamente el resultado esperado (156.6) ejecutando las funciones existentes.
+-- **Decisi├│n y supervisi├│n:** Aprob├® el dise├▒o de CR-001 como una tarea representativa: no trivial, acotada, determinista y directamente verificable.
+-
+-## Entrada 4: Estructuraci├│n de AGENTS.md y arquitectura documental
++---
+ 
+-- **Trabajo realizado con el asistente:** Siguiendo los principios de reducci├│n de contexto ambiguo, se dise├▒├│ `AGENTS.md` como contrato operativo central con enlaces directos a fuentes de verdad en lugar de duplicar especificaciones. Se implement├│ `CLAUDE.md` como adaptador delgado que solo redirige a `AGENTS.md`, `ARCHITECTURE.md` para delimitar l├¡mites de m├│dulos y convenciones de pureza/redondeo, y `docs/REPO_MAP.md` como gu├¡a de navegaci├│n para evitar exploraciones ciegas.
+-- **Decisi├│n y supervisi├│n:** Establec├¡ como regla que los agentes solo pueden incorporar nuevos criterios de aceptaci├│n (AC) en `SPEC.md`, reservando cualquier cambio o adici├│n a `REQUIREMENTS.md` para aprobaci├│n humana obligatoria.
++## 2. Reflexi├│n Individual (10 Preguntas)
+ 
+-## Entrada 5: Conversi├│n de reglas en guardrails ejecutables
++### 1. ┬┐Qu├® encontr├│ el reviewer-agent que el coder-agent no detect├│?
++El reviewer-agent detect├│ una omisi├│n cr├¡tica de validaci├│n de dominio: en `apply_fixed_discount`, el coder-agent nunca valid├│ si el par├ímetro `amount` era negativo (`if amount < 0:`). Debido a esto, al pasar un monto negativo como `apply_fixed_discount(-50.0, 0.0)`, el c├│digo evaluaba `0.0 > -50.0` y lanzaba `ValueError: Fixed discount cannot exceed amount`. Esta respuesta es incorrecta y enga├▒osa, ya que un descuento de cero nunca excedi├│ el monto; el error real era que el monto inicial era inv├ílido. El coder-agent asumi├│ que su implementaci├│n era correcta porque sus propios tests pasaban en verde, pero dichos tests sufr├¡an de un punto ciego.
+ 
+-- **Trabajo realizado con el asistente:** Para asegurar que las directrices no fueran meras sugerencias en texto, se convirtieron en scripts deterministas en Python est├índar: `scripts/check_protected_paths.py` (bloquea cambios en `REQUIREMENTS.md`, `.github/` o commits con secretos/.env) y `scripts/check_repo_contract.py` (valida existencia de archivos requeridos, consistencia REQ/AC y rutas citadas en docs). Se a├▒adieron 13 pruebas unitarias y se ejecutaron 8 casos de prueba demostrativos en `results/evidence/guardrail-demo.txt`.
+-- **Decisi├│n y supervisi├│n:** Durante las pruebas del guardrail se detect├│ que un archivo `.env` ignorado en `.gitignore` provocaba una discrepancia con la regla original. Respald├® el ajuste de la regla para permitir `.env` locales ignorados y concentrar el bloqueo en prevenir su commit o adici├│n forzada (`git add -f`).
++### 2. ┬┐Qu├® finding fue m├ís dif├¡cil de clasificar y por qu├®?
++El finding `RF-04` (docstring desactualizado en `calculate_order_total`). En revisiones automatizadas suele haber debate sobre si un docstring desalineado es un `SHOULD FIX` de mantenibilidad o un `OPTIONAL` cosm├®tico. Se clasific├│ inicialmente como `SHOULD FIX` porque `calculate_order_total` es la API p├║blica integradora del servicio; omitir que ahora acepta `fixed_discount` y que se aplica *despu├®s* del porcentaje y *antes* del impuesto induce a error a cualquier consumidor del m├│dulo. Como humano decid├¡ modificarlo (`MODIFIED`) para evitar explicaciones sobrecargadas y alinearlo al estilo conciso del repositorio.
+ 
+-## Entrada 6: Ejecuci├│n experimental BEFORE vs. AFTER
++### 3. ┬┐Qu├® finding rechazaste o modificaste como humano y qu├® evidencia usaste?
++Modifiqu├® `RF-04` (docstring). El reviewer suger├¡a una explicaci├│n extensa de 4 etapas que no concordaba con la concisi├│n de los docstrings de `src/calculator.py` (donde funciones como `apply_discount` o `apply_tax` tienen descripciones directas de una o dos l├¡neas). Utilic├® como evidencia el c├│digo previo de `src/calculator.py` (l├¡neas 11-12, 21-22, 33-37), instruyendo redactar una descripci├│n breve que indicara la secuencia sin inflar la deuda t├®cnica ni alterar el estilo visual del m├│dulo.
+ 
+-- **Trabajo realizado con el asistente:** Se ejecut├│ el experimento comparativo empleando dos subagentes limpios e independientes en repositorios aislados (`ada08-runs/run-a` y `ada08-runs/run-b`), exponiendo ├║nicamente el contexto autorizado para cada condici├│n. Claude compil├│ las m├®tricas de ejecuci├│n (n├║mero de turnos, archivos consultados, tokens) y verific├│ de forma independiente las salidas de ambos agentes.
+-- **Decisi├│n y supervisi├│n:** Revis├® los resultados de ambas corridas: mientras el agente BEFORE requiri├│ explorar el ├írbol y definir su propio m├®todo de validaci├│n, el agente AFTER sigui├│ el orden de `AGENTS.md`, utiliz├│ el comando unificado y actualiz├│ de manera consistente `SPEC.md`, `TASKS.md` y `docs/REPO_MAP.md`. Valid├® adem├ís que la suite final pasara a 27 pruebas (7 nuevas pruebas a├▒adidas para CR-001).
++### 4. ┬┐Hubo alg├║n test verde que produjera falsa confianza? Explica.
++S├¡, rotundamente. El test `test_apply_fixed_discount_negative` del coder-agent conten├¡a ├║nicamente:
++```python
++with self.assertRaises(ValueError):
++    apply_fixed_discount(100.0, -10.0)
++```
++Este test estaba en verde al 100%, pero generaba una falsa sensaci├│n de completitud sobre el criterio `AC-003-9` ("Negative amount or negative fixed_discount passed to apply_fixed_discount raises ValueError"). Validaba que un descuento negativo fallara, pero ocultaba el hecho de que un monto negativo no estaba validado expl├¡citamente. Adem├ís, el test usaba `assertRaises(ValueError)` sin verificar el mensaje de error, por lo que incluso llamadas con montos negativos habr├¡an pasado en verde arrojando el mensaje err├│neo.
+ 
+-## Entrada 7: Identificaci├│n de conocimiento impl├¡cito
++### 5. ┬┐Verificaste alguna API o dependencia que parec├¡a plausible? ┬┐Qu├® encontraste?
++Verifiqu├® la tentaci├│n de introducir tipos del m├│dulo `decimal` (`Decimal`, `ROUND_HALF_UP`) o validaciones con librer├¡as externas como `pydantic`. Aunque en aplicaciones de comercio electr├│nico el uso de `decimal.Decimal` es una pr├íctica com├║n para evitar errores de coma flotante, `ARCHITECTURE.md` y `AGENTS.md` establecen con claridad que este servicio opera como biblioteca pura con tipos nativos est├índar de Python (`float`), redondeo a 2 decimales con `round(..., 2)` y sin dependencias externas. Incorporar `Decimal` sin autorizaci├│n hubiera roto los l├¡mites arquitect├│nicos del componente.
+ 
+-- **Trabajo realizado con el asistente:** Se sistematizaron en `results/implicit-knowledge.md` los 8 puntos de conocimiento impl├¡cito que el agente BEFORE tuvo que asumir o inferir (convenciones de error `ValueError`, redondeo monetario a 2 decimales, archivos que no deb├¡an modificarse, etc.), asociando cada punto a una mejora concreta implementada en el repositorio.
+-- **Decisi├│n y supervisi├│n:** Comprob├® que los 8 elementos quedaran formalmente especificados en la documentaci├│n o respaldados por los scripts de verificaci├│n determinista.
++### 6. ┬┐Qu├® arquitectura o regla del repositorio fue m├ís ├║til para la revisi├│n?
++La convenci├│n de `ARCHITECTURE.md` sobre manejo de entradas inv├ílidas: *"Invalid input raises ValueError with a descriptive message. Never return None or a sentinel value"*, en conjunto con el principio de pureza del m├│dulo. Esta regla proporcion├│ la justificaci├│n indiscutible para elevar `RF-01` a `MUST FIX`, demostrando que un mensaje de error que confunde la causa ra├¡z (decir que el descuento excede el monto cuando el monto es negativo) viola el contrato expl├¡cito de la arquitectura.
+ 
+-## Entrada 8: Verificaci├│n compartida y CI/CD en GitHub
++### 7. ┬┐Qu├® problema pudo detectar un check determinista antes que el reviewer-agent?
++El script determinista `scripts/check_protected_paths.py` y `scripts/check_repo_contract.py` garantizan de forma inmediata que archivos protegidos como `REQUIREMENTS.md`, `.github/workflows/` o la inyecci├│n de secretos no sean alterados en el commit candidato. El reviewer-agent no necesita gastar tokens ni tiempo de an├ílisis verificando si se violaron rutas protegidas o si la sintaxis compila; los checks deterministas act├║an como un filtro de guardia (Verification Gate) que bloquea errores mec├ínicos antes de involucrar al agente revisor.
+ 
+-- **Trabajo realizado con el asistente:** Se configur├│ `scripts/verify_repo.sh` como ├║nico punto de entrada de verificaci├│n (tests, lint de sintaxis, contrato del repositorio y rutas protegidas), utilizado por desarrolladores, agentes y el workflow de GitHub Actions (`.github/workflows/verify.yml`). Claude prepar├│ la estructura para el repositorio remoto.
+-- **Decisi├│n y supervisi├│n:** Autorice la creaci├│n del repositorio p├║blico en mi cuenta de GitHub (`RafaMadera18/ada08-agent-ready-repository`), orden├® la publicaci├│n de las ramas de evidencia (`ada08/before`, `ada08/after`, `ada08/improve`, `main`), y verifiqu├® en la interfaz de GitHub Actions que todos los workflows terminaran en estado exitoso (verde).
++### 8. ┬┐Qu├® parte del review sigue requiriendo criterio humano?
++La calibraci├│n de la intenci├│n del negocio, la ponderaci├│n del trade-off entre rigor y sobreingenier├¡a, y la decisi├│n final de riesgo para merge. Un agente revisor puede listar decenas de sugerencias te├│ricas (como exigir tipado estricto con generics o validaciones exhaustivas de tipos), pero solo un humano comprende el contexto operativo para discernir qu├® es un defecto bloqueante (`MUST FIX`), qu├® es una mejora viable (`SHOULD FIX`) y qu├® debe descartarse o simplificarse (`MODIFIED`/`REJECTED`) para no frenar la entrega de valor sin comprometer la calidad.
+ 
+-## Entrada 9: Evaluaci├│n final y reflexiones
++### 9. ┬┐Qu├® technical debt aceptaste o diferiste y por qu├®?
++Acept├® la deuda t├®cnica inherente al uso de aritm├®tica de coma flotante binaria (`float` IEEE 754) para c├ílculos monetarios. Aunque en finanzas de alta precisi├│n esto puede acarrear representaciones imprecisas en operaciones acumuladas, se difiri├│ cualquier migraci├│n a `decimal.Decimal` porque el alcance actual del servicio est├í acotado por `SPEC.md` a listas de precios reducidas con redondeo a 2 decimales, y cambiar los tipos de retorno alterar├¡a el contrato de consumo de todos los clientes de la librer├¡a.
+ 
+-- **Trabajo realizado con el asistente:** Se complet├│ la auditor├¡a AFTER alcanzando un puntaje de 86/100 (+56 puntos sobre el baseline). Claude gener├│ el borrador inicial del reporte comparativo y las respuestas base a las preguntas de reflexi├│n.
+-- **Decisi├│n y supervisi├│n:** Acept├® el puntaje de 86/100 reconociendo las amenazas a la validez documentadas en el reporte (evaluador compartido y una sola corrida por condici├│n), ejecut├® la verificaci├│n local completa (`VERIFY_REPO: PASS`) y revis├® las respuestas de reflexi├│n en `results/readiness-improvement-report.md`.
++### 10. ┬┐Qu├® artefactos de este ADA reutilizar├¡as en la Agentic Software Factory final?
++Reutilizar├¡a tres artefactos fundamentales:
++1. **`review-contract.md`**: Es el instrumento que evita alucinaciones del revisor, forz├índolo a contrastar el c├│digo contra requisitos y arquitectura antes de mirar el diff.
++2. **`human-review-decisions.md`**: Formaliza el patr├│n *human-in-the-loop*, garantizando que ning├║n agente decida unilateralmente qu├® correcciones se aplican y manteniendo la trazabilidad de por qu├® se acept├│ o rechaz├│ un hallazgo.
++3. **`PR_EVIDENCE.md`**: Funciona como el expediente de auditor├¡a consolidado del Pull Request, vinculando requisitos, commits, compuertas deterministas, reporte de revisi├│n y sign-off humano para compliance y entrega continua.
+diff --git a/CHANGE_REQUEST.md b/CHANGE_REQUEST.md
 new file mode 100644
 index 0000000..c1276a6
 --- /dev/null
@@ -58,14 +189,90 @@ index 3f32313..cc3e504 100644
  ## Conventions that apply to every criterion
  
 diff --git a/TASKS.md b/TASKS.md
-index bde8f3b..b9a1ea6 100644
+index bde8f3b..ba22617 100644
 --- a/TASKS.md
 +++ b/TASKS.md
 @@ -9,3 +9,4 @@ Work items and their link to requirements. Requirements are defined only in `REQ
  | T-003 | Percentage discount calculation | REQ-003 | Done |
  | T-004 | Repository readiness for coding agents (ADA-08) | - | Done |
  | CR-001 | Change request described in `TASK_UNDER_TEST.md` | REQ-001, REQ-002, REQ-003 | Done |
-+| CR-002 | Fixed-amount discount support in calculator | REQ-003 | In progress |
++| CR-002 | Fixed-amount discount support in calculator | REQ-003 | Done |
+diff --git a/results/PR_EVIDENCE.md b/results/PR_EVIDENCE.md
+new file mode 100644
+index 0000000..0d8d1f8
+--- /dev/null
++++ b/results/PR_EVIDENCE.md
+@@ -0,0 +1,70 @@
++# PR Evidence
++
++## Change
++- **Change ID**: CR-002
++- **PR / Branch**: `ada09/cr-002`
++- **Base commit**: `0cd5e73`
++- **Candidate commit**: `cbef67d` (`feat: implement CR-002`)
++- **Fix commit**: `3a9b999` (`fix: address ADA-09 review findings`)
++
++## Requirements / Acceptance Criteria
++- **FR-003 / REQ-003**: Discounts (Percentage & Promotional Discounts)
++- **AC-003-8**: `apply_fixed_discount(amount, fixed_discount)` returns `amount - fixed_discount` rounded to 2 decimals.
++- **AC-003-9**: Negative `amount` or negative `fixed_discount` passed to `apply_fixed_discount` raises `ValueError`.
++- **AC-003-10**: `fixed_discount` exceeding `amount` passed to `apply_fixed_discount` raises `ValueError`.
++- **AC-003-11**: `fixed_discount` is optional in `calculate_order_total` defaulting to `0.0`. Order total applies percentage discount first, then fixed discount, then tax.
++
++## Implementation
++- **Coder report**: `results/coder-report.md`
++- **Files changed**: `CHANGE_REQUEST.md`, `SPEC.md`, `TASKS.md`, `src/calculator.py`, `tests/test_calculator.py`, `results/*`
++- **Commits**:
++  - `cbef67d`: `feat: implement CR-002`
++  - `3a9b999`: `fix: address ADA-09 review findings`
++
++## Verification
++- **Verification command**: `python -m unittest discover tests; python -m compileall -q src tests scripts; python scripts/check_repo_contract.py; python scripts/check_protected_paths.py`
++- **Final result**: PASS
++- **Tests**: 34/34 passing (0 failures, 0 errors)
++- **Lint**: Clean compilation, 0 syntax errors
++- **Security / repo checks**: REPO_CONTRACT: PASS, PROTECTED_PATHS: PASS
++
++## Independent Review
++- **Review report**: `results/review-report.md`
++- **MUST FIX found**: 2 (RF-01: missing validation for negative amount; RF-02: test gap/false confidence)
++- **SHOULD FIX found**: 2 (RF-03: composite order total edge tests; RF-04: outdated docstring)
++- **OPTIONAL found**: 1 (RF-05: fractional cent rounding test precision)
++
++## Human Decisions
++- **Accepted**: 4 (RF-01, RF-02, RF-03, RF-05)
++- **Modified**: 1 (RF-04: updated docstring concisely matching existing module style)
++- **Rejected**: 0
++- **Deferred**: 0
++- **Decisions record**: `results/human-review-decisions.md`
++
++## Re-review
++- **Re-review report**: `results/re-review-report.md`
++- **Resolved**: 5/5 (RF-01, RF-02, RF-03, RF-04, RF-05)
++- **Partially resolved**: 0
++- **Not resolved**: 0
++- **New MUST FIX regressions**: 0
++- **Re-review outcome**: READY FOR HUMAN REVIEW
++
++## Traceability
++
++| Requirement / AC | Task / Change | Code | Test | Review Finding |
++|---|---|---|---|---|
++| AC-003-8 | CR-002: Fixed discount deduction & 2 decimal rounding | `src/calculator.py:apply_fixed_discount` | `tests/test_calculator.py:test_apply_fixed_discount_valid` | RF-05 (OPTIONAL, Resolved) |
++| AC-003-9 | CR-002: Negative amount & negative fixed discount validation | `src/calculator.py:apply_fixed_discount` | `tests/test_calculator.py:test_apply_fixed_discount_negative` | RF-01 (MUST FIX, Resolved), RF-02 (MUST FIX, Resolved) |
++| AC-003-10 | CR-002: Fixed discount exceeding amount validation | `src/calculator.py:apply_fixed_discount` | `tests/test_calculator.py:test_apply_fixed_discount_exceeds_amount` | None (Clean initial pass) |
++| AC-003-11 | CR-002: Composite order total calculation | `src/calculator.py:calculate_order_total` | `tests/test_calculator.py:test_calculate_order_total_fixed_discount*` | RF-03 (SHOULD FIX, Resolved), RF-04 (SHOULD FIX, Resolved) |
++
++## Remaining Risks / Technical Debt
++- Floating point arithmetic is constrained to IEEE 754 64-bit float with `round(..., 2)`. While standard across this library, large enterprise financial systems may eventually consider `decimal.Decimal` if arbitrary precision is mandated in future requirements.
++- No remaining MUST FIX or SHOULD FIX debts on this branch.
++
++## Final Human Decision
++[ ] NOT READY  
++[x] READY FOR HUMAN MERGE  
++
++**Approved by**: Rafael (Lead Reviewer & Human Gate Keeper)  
++**Date**: 2026-11-05  
 diff --git a/results/coder-report.md b/results/coder-report.md
 new file mode 100644
 index 0000000..562bfa0
@@ -153,11 +360,12 @@ index 0000000..562bfa0
 +This report is NOT an approval.
 diff --git a/results/commits.txt b/results/commits.txt
 new file mode 100644
-index 0000000..5569ae9
+index 0000000..ace8890
 --- /dev/null
 +++ b/results/commits.txt
-@@ -0,0 +1 @@
-+´╗┐cbef67d feat: implement CR-002
+@@ -0,0 +1,2 @@
++´╗┐3a9b999 fix: address ADA-09 review findings
++cbef67d feat: implement CR-002
 diff --git a/results/human-review-decisions.md b/results/human-review-decisions.md
 new file mode 100644
 index 0000000..74c59b0
@@ -207,10 +415,10 @@ index 0000000..74c59b0
 +[ ] Stop / escalate  
 diff --git a/results/pr.diff b/results/pr.diff
 new file mode 100644
-index 0000000..97f8bd9
+index 0000000..9a67fe6
 --- /dev/null
 +++ b/results/pr.diff
-@@ -0,0 +1,235 @@
+@@ -0,0 +1,771 @@
 +´╗┐diff --git a/CHANGE_REQUEST.md b/CHANGE_REQUEST.md
 +new file mode 100644
 +index 0000000..c1276a6
@@ -281,10 +489,10 @@ index 0000000..97f8bd9
 ++| CR-002 | Fixed-amount discount support in calculator | REQ-003 | In progress |
 +diff --git a/results/coder-report.md b/results/coder-report.md
 +new file mode 100644
-+index 0000000..dd08580
++index 0000000..562bfa0
 +--- /dev/null
 ++++ b/results/coder-report.md
-+@@ -0,0 +1,60 @@
++@@ -0,0 +1,79 @@
 ++# Coder Agent Report
 ++
 ++## Change
@@ -345,6 +553,491 @@ index 0000000..97f8bd9
 ++[x] Ready for independent review
 ++
 ++This report is NOT an approval.
+++
+++
+++---
+++
+++## Fix Cycle
+++### Findings Addressed
+++- **RF-01 (MUST FIX)**: Added explicit check `if amount < 0: raise ValueError("Amount cannot be negative")` in `apply_fixed_discount`.
+++- **RF-02 (MUST FIX)**: Added unit test assertions in `test_apply_fixed_discount_negative` verifying negative amount inputs (`-50.0, 10.0` and `-50.0, 0.0`).
+++- **RF-03 (SHOULD FIX)**: Added unit tests `test_calculate_order_total_negative_fixed_discount`, `test_calculate_order_total_fixed_discount_exceeds_balance`, and `test_calculate_order_total_fixed_discount_only`.
+++- **RF-04 (SHOULD FIX)**: Updated docstring of `calculate_order_total` to document `fixed_discount` and the 4-step pipeline sequence.
+++- **RF-05 (OPTIONAL)**: Added fractional cent rounding assertion (`100.0, 15.556 -> 84.44`) to `test_apply_fixed_discount_valid`.
+++
+++### Verification after Fix Cycle
+++- `python -m unittest discover tests` -> 34 tests passing (3 new regression tests added)
+++- `python -m compileall -q src tests scripts` -> PASS
+++- `python scripts/check_repo_contract.py` -> REPO_CONTRACT: PASS
+++- `python scripts/check_protected_paths.py` -> PROTECTED_PATHS: PASS
+++
+++This report is NOT an approval.
++diff --git a/results/commits.txt b/results/commits.txt
++new file mode 100644
++index 0000000..5569ae9
++--- /dev/null
+++++ b/results/commits.txt
++@@ -0,0 +1 @@
+++┬┤ÔòùÔöÉcbef67d feat: implement CR-002
++diff --git a/results/human-review-decisions.md b/results/human-review-decisions.md
++new file mode 100644
++index 0000000..74c59b0
++--- /dev/null
+++++ b/results/human-review-decisions.md
++@@ -0,0 +1,41 @@
+++# Human Review Decisions
+++
+++## Change
+++CR-002: Fixed-amount discount support in calculator service
+++
+++### RF-01
+++- **Reviewer severity**: MUST FIX
+++- **Human decision**: ACCEPTED
+++- **Reason**: The finding is technically sound and well-evidenced. Missing `if amount < 0:` causes negative amounts to trigger the `fixed_discount > amount` branch, returning a misleading error message ("Fixed discount cannot exceed amount") rather than indicating an invalid amount. This directly violates AC-003-9 and the architecture convention requiring clear `ValueError` diagnostics.
+++- **Required action**: Add explicit check `if amount < 0: raise ValueError("Amount cannot be negative")` as the first line of `apply_fixed_discount`.
+++
+++### RF-02
+++- **Reviewer severity**: MUST FIX
+++- **Human decision**: ACCEPTED
+++- **Reason**: The test suite produced false confidence by testing only `apply_fixed_discount(100.0, -10.0)` while neglecting negative amounts (`-50.0, 10.0` and `-50.0, 0.0`). Testing both boundaries is required to verify AC-003-9.
+++- **Required action**: Add unit test assertions in `test_apply_fixed_discount_negative` covering negative amounts.
+++
+++### RF-03
+++- **Reviewer severity**: SHOULD FIX
+++- **Human decision**: ACCEPTED
+++- **Reason**: `calculate_order_total` combines multiple business rules; omitting negative fixed discount and edge-case boundary checks leaves integration regressions unchecked.
+++- **Required action**: Add test cases in `test_calculator.py` for `calculate_order_total` with negative fixed discount and fixed discount exceeding post-discount subtotal.
+++
+++### RF-04
+++- **Reviewer severity**: SHOULD FIX
+++- **Human decision**: MODIFIED
+++- **Reason**: The docstring is indeed outdated, but rather than verbose prose, it should follow the concise style established across `src/calculator.py`.
+++- **Final severity**: SHOULD FIX
+++- **Required action**: Update `calculate_order_total` docstring to document `fixed_discount` and the 4-step sequence concisely.
+++
+++### RF-05
+++- **Reviewer severity**: OPTIONAL
+++- **Human decision**: ACCEPTED
+++- **Reason**: Adding a fractional cents test is straightforward, low-risk, and ensures floating-point rounding precision is safeguarded.
+++- **Final severity**: OPTIONAL
+++- **Required action**: Include `apply_fixed_discount(100.0, 15.556)` in `test_apply_fixed_discount_valid`.
+++
+++## Human Gate
+++[x] Return to coder-agent  
+++[ ] Ready for final re-review  
+++[ ] Stop / escalate  
++diff --git a/results/pr.diff b/results/pr.diff
++new file mode 100644
++index 0000000..97f8bd9
++--- /dev/null
+++++ b/results/pr.diff
++@@ -0,0 +1,235 @@
+++┬┤ÔòùÔöÉdiff --git a/CHANGE_REQUEST.md b/CHANGE_REQUEST.md
+++new file mode 100644
+++index 0000000..c1276a6
+++--- /dev/null
++++++ b/CHANGE_REQUEST.md
+++@@ -0,0 +1,31 @@
++++# Change Request
++++
++++Change ID: CR-002
++++
++++## Goal
++++Add fixed-amount discount support through a new pure function `apply_fixed_discount(amount: float, fixed_discount: float) -> float` and integrate an optional `fixed_discount: float = 0.0` parameter into `calculate_order_total(prices, discount_percent=0.0, tax_rate=0.0, fixed_discount=0.0) -> float` while preserving full backward compatibility for existing callers.
++++
++++## Requirements Covered
++++- REQ-003 (Discounts)
++++- AC-003-8 (Fixed discount deduction rounded to 2 decimals)
++++- AC-003-9 (Validation against negative amounts and negative fixed discounts)
++++- AC-003-10 (Validation against fixed discounts exceeding amount)
++++- AC-003-11 (Discount sequencing in `calculate_order_total`: subtotal -> percentage discount -> fixed discount -> tax)
++++
++++## Constraints
++++- Follow AGENTS.md.
++++- Use REQUIREMENTS.md and SPEC.md as the source of truth.
++++- Preserve architecture boundaries: pure functions in `src/calculator.py`, standard library only, no I/O, raise `ValueError` on invalid inputs, round money outputs to 2 decimal places.
++++- Do not weaken existing tests.
++++- Maintain backward compatibility of `calculate_order_total`.
++++
++++## Verification
++++- Unit tests cover valid fixed discounts, zero discount, discount matching amount, negative amount, negative discount, and discount exceeding amount.
++++- Unit tests verify order total calculation combining prices, percentage discount, fixed discount, and tax rate.
++++- All 27 existing tests pass without modification.
++++- Deterministic verification command (`verify_repo.sh` / standard suite) passes.
++++
++++## Human Approval
++++Approved to implement: YES
++++Approved by: Rafael (Lead Reviewer / Human Gate 0)
++++Date: 2026-11-05
+++diff --git a/SPEC.md b/SPEC.md
+++index 3f32313..cc3e504 100644
+++--- a/SPEC.md
++++++ b/SPEC.md
+++@@ -34,6 +34,9 @@ Function: `apply_discount(subtotal: float, discount_percent: float) -> float`
+++ | AC-003-2 | A discount below 0 or above 100 raises `ValueError`. | `test_apply_discount_invalid` |
+++ | AC-003-3 | A negative subtotal raises `ValueError`. | `test_apply_discount_invalid` |
+++ | AC-003-4 | When a discount and a tax rate are both applied, the discount is applied first and the tax is calculated on the discounted amount (from "before tax calculation" in REQ-003). | `test_calculate_order_total_discount_then_tax` |
++++| AC-003-8 | `apply_fixed_discount(amount, fixed_discount)` returns `amount - fixed_discount` rounded to 2 decimals. | `test_apply_fixed_discount_valid` |
++++| AC-003-9 | Negative `amount` or negative `fixed_discount` passed to `apply_fixed_discount` raises `ValueError`. | `test_apply_fixed_discount_negative` |
++++| AC-003-10 | A `fixed_discount` exceeding `amount` passed to `apply_fixed_discount` raises `ValueError`. | `test_apply_fixed_discount_exceeds_amount` |
+++ 
+++ ## Order Total (combines REQ-001, REQ-002, REQ-003)
+++ 
+++@@ -48,6 +51,7 @@ Function: `calculate_order_total(prices: list[float], discount_percent: float =
+++ | AC-003-5 | `calculate_order_total([100.0, 50.0], 10.0, 0.16)` returns `156.6`; a 100% discount returns `0.0`. | `test_calculate_order_total_discount_then_tax`, `test_calculate_order_total_full_discount` |
+++ | AC-003-6 | A discount outside 0-100 passed to `calculate_order_total` raises `ValueError`. | `test_calculate_order_total_invalid_discount` |
+++ | AC-003-7 | `discount_percent` and `tax_rate` are optional and default to `0.0`. | `test_calculate_order_total_defaults` |
++++| AC-003-11 | `fixed_discount` is optional and defaults to `0.0`. Order total applies percentage discount first, then fixed discount, then tax. | `test_calculate_order_total_fixed_discount` |
+++ 
+++ ## Conventions that apply to every criterion
+++ 
+++diff --git a/TASKS.md b/TASKS.md
+++index bde8f3b..b9a1ea6 100644
+++--- a/TASKS.md
++++++ b/TASKS.md
+++@@ -9,3 +9,4 @@ Work items and their link to requirements. Requirements are defined only in `REQ
+++ | T-003 | Percentage discount calculation | REQ-003 | Done |
+++ | T-004 | Repository readiness for coding agents (ADA-08) | - | Done |
+++ | CR-001 | Change request described in `TASK_UNDER_TEST.md` | REQ-001, REQ-002, REQ-003 | Done |
++++| CR-002 | Fixed-amount discount support in calculator | REQ-003 | In progress |
+++diff --git a/results/coder-report.md b/results/coder-report.md
+++new file mode 100644
+++index 0000000..dd08580
+++--- /dev/null
++++++ b/results/coder-report.md
+++@@ -0,0 +1,60 @@
++++# Coder Agent Report
++++
++++## Change
++++Change ID: CR-002  
++++Branch: ada09/cr-002  
++++Base commit: 0cd5e73  
++++
++++## Requirements Covered
++++- FR-003 (Discounts / REQ-003)
++++- AC-003-8 (Fixed discount deduction and rounding)
++++- AC-003-9 (Validation against negative values)
++++- AC-003-10 (Validation against discount exceeding amount)
++++- AC-003-11 (Discount sequencing in calculate_order_total)
++++
++++## Implementation Plan
++++1. Add acceptance criteria AC-003-8 through AC-003-11 to `SPEC.md` under REQ-003.
++++2. Update task tracking in `TASKS.md` for CR-002.
++++3. Implement pure function `apply_fixed_discount(amount: float, fixed_discount: float) -> float` in `src/calculator.py`.
++++4. Update `calculate_order_total` in `src/calculator.py` with optional `fixed_discount: float = 0.0`.
++++5. Add unit tests in `tests/test_calculator.py` for valid deductions, negative discounts, discount exceeding amount, and composite order total.
++++6. Run deterministic verification suite (`unittest`, `compileall`, `check_repo_contract.py`, `check_protected_paths.py`).
++++
++++## Files Changed
++++- `CHANGE_REQUEST.md` (Change request definition)
++++- `SPEC.md` (Added acceptance criteria AC-003-8 to AC-003-11)
++++- `TASKS.md` (Updated task tracking for CR-002)
++++- `src/calculator.py` (Added `apply_fixed_discount`, updated `calculate_order_total`)
++++- `tests/test_calculator.py` (Added test cases for fixed discount behavior)
++++- `results/run-context.md` (Execution context)
++++
++++## Tests Added / Updated
++++- `test_apply_fixed_discount_valid` in `tests/test_calculator.py`
++++- `test_apply_fixed_discount_negative` in `tests/test_calculator.py`
++++- `test_apply_fixed_discount_exceeds_amount` in `tests/test_calculator.py`
++++- `test_calculate_order_total_fixed_discount` in `tests/test_calculator.py`
++++
++++## Commands Executed
++++- `python -m unittest discover tests` -> 31 tests passed
++++- `python -m compileall -q src tests scripts` -> syntax check passed
++++- `python scripts/check_repo_contract.py` -> REPO_CONTRACT: PASS
++++- `python scripts/check_protected_paths.py` -> PROTECTED_PATHS: PASS
++++
++++## Verification Result
++++PASS (31/31 tests passing, compileall clean, repo contract clean, protected paths clean).
++++
++++## Assumptions
++++- Fixed discount is applied to the discounted subtotal after percentage discount has been evaluated.
++++- Deducting the exact full amount resulting in 0.0 is permitted.
++++
++++## Known Limitations
++++- Only standard Python float representations are used.
++++- No interactive UI or CLI added as restricted by `ARCHITECTURE.md`.
++++
++++## Self-Check
++++[x] Scope respected
++++[x] Existing tests not weakened
++++[x] No undocumented dependency/API introduced
++++[x] Ready for independent review
++++
++++This report is NOT an approval.
+++diff --git a/results/run-context.md b/results/run-context.md
+++new file mode 100644
+++index 0000000..ee6660b
+++--- /dev/null
++++++ b/results/run-context.md
+++@@ -0,0 +1,17 @@
++++# Run Context
++++
++++## Change Request
++++- **Change ID**: CR-002
++++- **Branch**: `ada09/cr-002`
++++- **Base Commit**: `0cd5e73` (`docs(ada08): finalize AI usage log and individual reflection`)
++++- **Repository**: `ada-09-agentic-code-review`
++++- **Date**: 2026-11-05
++++- **Environment**:
++++  - Python: 3.13.7
++++  - Platform: Windows (x86_64)
++++  - Git Branch: `ada09/cr-002`
++++
++++## Initial Status
++++- Working tree clean
++++- Base commit verified on `main`
++++- Deterministic test suite passing (27 tests)
+++diff --git a/src/calculator.py b/src/calculator.py
+++index 820b53b..08f0a26 100644
+++--- a/src/calculator.py
++++++ b/src/calculator.py
+++@@ -18,6 +18,15 @@ def apply_discount(subtotal: float, discount_percent: float) -> float:
+++     return round(discounted, 2)
+++ 
+++ 
++++def apply_fixed_discount(amount: float, fixed_discount: float) -> float:
++++    """Apply fixed discount amount to an amount."""
++++    if fixed_discount < 0:
++++        raise ValueError("Fixed discount cannot be negative")
++++    if fixed_discount > amount:
++++        raise ValueError("Fixed discount cannot exceed amount")
++++    return round(amount - fixed_discount, 2)
++++
++++
+++ def apply_tax(amount: float, tax_rate: float) -> float:
+++     """Apply tax rate to an amount."""
+++     if amount < 0:
+++@@ -28,7 +37,10 @@ def apply_tax(amount: float, tax_rate: float) -> float:
+++ 
+++ 
+++ def calculate_order_total(
+++-    prices: list[float], discount_percent: float = 0.0, tax_rate: float = 0.0
++++    prices: list[float],
++++    discount_percent: float = 0.0,
++++    tax_rate: float = 0.0,
++++    fixed_discount: float = 0.0,
+++ ) -> float:
+++     """Calculate the final order total.
+++ 
+++@@ -37,4 +49,5 @@ def calculate_order_total(
+++     """
+++     subtotal = calculate_subtotal(prices)
+++     discounted = apply_discount(subtotal, discount_percent)
+++-    return apply_tax(discounted, tax_rate)
++++    after_fixed = apply_fixed_discount(discounted, fixed_discount)
++++    return apply_tax(after_fixed, tax_rate)
+++diff --git a/tests/test_calculator.py b/tests/test_calculator.py
+++index 50eafad..c4f6add 100644
+++--- a/tests/test_calculator.py
++++++ b/tests/test_calculator.py
+++@@ -2,6 +2,7 @@ import unittest
+++ from src.calculator import (
+++     calculate_subtotal,
+++     apply_discount,
++++    apply_fixed_discount,
+++     apply_tax,
+++     calculate_order_total,
+++ )
+++@@ -69,6 +70,26 @@ class TestCalculator(unittest.TestCase):
+++         with self.assertRaises(ValueError):
+++             calculate_order_total([100.0], 0.0, -0.16)
+++ 
++++    def test_apply_fixed_discount_valid(self):
++++        self.assertEqual(apply_fixed_discount(100.0, 15.0), 85.0)
++++        self.assertEqual(apply_fixed_discount(50.0, 0.0), 50.0)
++++        self.assertEqual(apply_fixed_discount(20.0, 20.0), 0.0)
++++
++++    def test_apply_fixed_discount_negative(self):
++++        with self.assertRaises(ValueError):
++++            apply_fixed_discount(100.0, -10.0)
++++
++++    def test_apply_fixed_discount_exceeds_amount(self):
++++        with self.assertRaises(ValueError):
++++            apply_fixed_discount(50.0, 60.0)
++++
++++    def test_calculate_order_total_fixed_discount(self):
++++        # 100 subtotal -> 10% discount = 90 -> fixed discount 10 = 80 -> tax 16% = 92.8
++++        self.assertEqual(
++++            calculate_order_total([100.0], discount_percent=10.0, tax_rate=0.16, fixed_discount=10.0),
++++            92.8,
++++        )
++++
+++ 
+++ if __name__ == "__main__":
+++     unittest.main()
++diff --git a/results/review-contract.md b/results/review-contract.md
++new file mode 100644
++index 0000000..7f04e4b
++--- /dev/null
+++++ b/results/review-contract.md
++@@ -0,0 +1,30 @@
+++# Review Contract
+++
+++## Change
+++CR-002: Fixed-amount discount support in calculator service
+++
+++## Requirements / Acceptance Criteria
+++- FR-003 / REQ-003: Percentage & Promotional Discount calculation
+++- AC-003-8: `apply_fixed_discount(amount: float, fixed_discount: float) -> float` returns `amount - fixed_discount` rounded to 2 decimals.
+++- AC-003-9: Negative `amount` or negative `fixed_discount` passed to `apply_fixed_discount` raises `ValueError`.
+++- AC-003-10: `fixed_discount` exceeding `amount` passed to `apply_fixed_discount` raises `ValueError`.
+++- AC-003-11: `fixed_discount` is optional in `calculate_order_total` defaulting to `0.0`. Sequencing must be: subtotal -> percentage discount -> fixed discount -> tax.
+++
+++## Architecture Constraints
+++- Expected dependency flow: `tests/` -> `src/`. `src/calculator.py` must only use standard library, no I/O, no network, no global mutable state.
+++- Business-rule location: All calculation logic and input validation must reside in `src/calculator.py`.
+++- Protected boundaries: `REQUIREMENTS.md`, `generated/`, `.github/workflows/` must not be modified without explicit authorization. No third-party dependencies.
+++
+++## Review Rules
+++- Verify requirement coverage: Ensure all acceptance criteria AC-003-8 to AC-003-11 are genuinely implemented and verified.
+++- Verify every called API/dependency exists in production code (standard library only).
+++- Check architecture boundaries and conventions (pure functions, `ValueError` on bad inputs, rounding to 2 decimals).
+++- Inspect tests for masking / false confidence: check for missing boundary tests (e.g. negative amount, zero amount, compound discount edge cases).
+++- Check regression and backward-compatibility behavior (existing tests pass, positional/keyword argument compatibility).
+++- Identify unnecessary technical debt (outdated docstrings, unhandled edge cases).
+++- Cite evidence for every finding (file, line number, concrete code or test deficiency).
+++
+++## Severity
+++- **MUST FIX**: Requirement violation, regression, security/integrity risk, hallucinated API/dependency, broken architecture constraint, or defect that makes the change unsafe to approve.
+++- **SHOULD FIX**: Significant maintainability, coverage, design, or clarity issue that does not block the requested behavior.
+++- **OPTIONAL**: Non-blocking improvement outside the minimum acceptance threshold.
++diff --git a/results/review-report.md b/results/review-report.md
++new file mode 100644
++index 0000000..adcb315
++--- /dev/null
+++++ b/results/review-report.md
++@@ -0,0 +1,129 @@
+++# Independent Review Report
+++
+++## Review Context
+++- **Change ID**: CR-002
+++- **Branch / PR**: `ada09/cr-002`
+++- **Commit reviewed**: `cbef67d` (`feat: implement CR-002`)
+++- **Reviewer agent**: Independent Code Review Subagent (`research`)
+++- **Model**: Gemini 3.8 Flash
+++- **Tools / permissions**: Read-only codebase tools, deterministic test and contract execution
+++
+++## Requirements Reviewed
+++- FR-003 / REQ-003: Percentage & Promotional Discounts
+++- AC-003-8: `apply_fixed_discount` calculation and rounding to 2 decimals
+++- AC-003-9: Negative `amount` or negative `fixed_discount` raises `ValueError`
+++- AC-003-10: `fixed_discount` exceeding `amount` raises `ValueError`
+++- AC-003-11: `fixed_discount` optional parameter in `calculate_order_total`, sequencing subtotal -> discount % -> fixed discount -> tax
+++
+++## Verification Evidence Reviewed
+++- Automated test output: 31 tests passing (exit code 0)
+++- Lint output: `compileall` clean (exit code 0)
+++- Repo contract: `check_repo_contract.py` PASS
+++- Security / protected paths: `check_protected_paths.py` PASS
+++- Candidate diff: `results/pr.diff` (7 files changed, +149, -2)
+++
+++## Findings
+++
+++### RF-01 ├ö├ç├Â MUST FIX
+++- **Category**: Input Validation / Requirement Violation
+++- **Requirement / AC**: AC-003-9, ARCHITECTURE.md (descriptive ValueError)
+++- **File / Line**: `src/calculator.py:21-27`
+++- **Evidence**:
+++  ```python
+++  def apply_fixed_discount(amount: float, fixed_discount: float) -> float:
+++      """Apply fixed discount amount to an amount."""
+++      if fixed_discount < 0:
+++          raise ValueError("Fixed discount cannot be negative")
+++      if fixed_discount > amount:
+++          raise ValueError("Fixed discount cannot exceed amount")
+++      return round(amount - fixed_discount, 2)
+++  ```
+++- **Problem**:
+++  `apply_fixed_discount` lacks an explicit check for `amount < 0`. Unlike `apply_discount` (`if subtotal < 0: raise ValueError("Subtotal cannot be negative")`) and `apply_tax` (`if amount < 0: raise ValueError("Amount cannot be negative")`), passing a negative amount (e.g. `apply_fixed_discount(-50.0, 0.0)`) fails into `if fixed_discount > amount`, raising a misleading `ValueError: Fixed discount cannot exceed amount`.
+++- **Risk**:
+++  Violates AC-003-9 and architectural error handling conventions. Masks invalid domain inputs with confusing error messages.
+++- **Recommended next step**:
+++  Add `if amount < 0: raise ValueError("Amount cannot be negative")` as the first validation check in `apply_fixed_discount`.
+++
+++### RF-02 ├ö├ç├Â MUST FIX
+++- **Category**: Test Quality / False Confidence
+++- **Requirement / AC**: AC-003-9, CHANGE_REQUEST.md Verification
+++- **File / Line**: `tests/test_calculator.py:78-81`
+++- **Evidence**:
+++  ```python
+++  def test_apply_fixed_discount_negative(self):
+++      with self.assertRaises(ValueError):
+++          apply_fixed_discount(100.0, -10.0)
+++  ```
+++- **Problem**:
+++  The coder report claims full coverage of negative inputs, but `test_apply_fixed_discount_negative` only tested negative `fixed_discount`, omitting negative `amount`. This test gap gave false confidence that all aspects of AC-003-9 were verified when they were not.
+++- **Risk**:
+++  False confidence in green test suite; regressions or invalid inputs go undetected in automated pipelines.
+++- **Recommended next step**:
+++  Add assertions in `test_apply_fixed_discount_negative` testing `apply_fixed_discount(-50.0, 10.0)` and `apply_fixed_discount(-50.0, 0.0)`.
+++
+++### RF-03 ├ö├ç├Â SHOULD FIX
+++- **Category**: Integration Test Coverage
+++- **Requirement / AC**: AC-003-11
+++- **File / Line**: `tests/test_calculator.py:86-92`
+++- **Evidence**:
+++  Only one positive test case was added for `calculate_order_total` with `fixed_discount`.
+++- **Problem**:
+++  No tests verify that `calculate_order_total` raises `ValueError` when given a negative `fixed_discount` or when `fixed_discount` exceeds the discounted subtotal (e.g., subtotal 100 with 50% discount leaves 50; fixed discount of 60 exceeds remaining balance).
+++- **Risk**:
+++  Edge cases in the multi-stage discount pipeline could fail unexpectedly or behave inconsistently.
+++- **Recommended next step**:
+++  Add unit tests for `calculate_order_total` with negative fixed discount and fixed discount exceeding post-percentage discounted subtotal.
+++
+++### RF-04 ├ö├ç├Â SHOULD FIX
+++- **Category**: Documentation & Technical Debt
+++- **Requirement / AC**: AC-003-11, ARCHITECTURE.md
+++- **File / Line**: `src/calculator.py:45-49`
+++- **Evidence**:
+++  ```python
+++  def calculate_order_total(
+++      prices: list[float],
+++      discount_percent: float = 0.0,
+++      tax_rate: float = 0.0,
+++      fixed_discount: float = 0.0,
+++  ) -> float:
+++      """Calculate the final order total.
+++
+++      The discount (0-100) is applied to the subtotal first; the tax rate is then
+++      applied to the discounted amount.
+++      """
+++  ```
+++- **Problem**:
+++  Docstring does not mention `fixed_discount` or explain the 4-step sequence (subtotal -> percentage discount -> fixed discount -> tax).
+++- **Risk**:
+++  Developers using the library will not have accurate documentation of function parameters and execution order.
+++- **Recommended next step**:
+++  Update docstring to document `fixed_discount` and the complete pipeline.
+++
+++### RF-05 ├ö├ç├Â OPTIONAL
+++- **Category**: Precision Testing
+++- **Requirement / AC**: AC-003-8
+++- **File / Line**: `tests/test_calculator.py:73-77`
+++- **Evidence**:
+++  All test inputs in `test_apply_fixed_discount_valid` use round numbers without fractional cents.
+++- **Problem**:
+++  Test cases do not exercise boundary floating-point cent rounding (e.g., `apply_fixed_discount(100.0, 15.556)`).
+++- **Risk**:
+++  Low; `round(..., 2)` is present in code, but explicit rounding test ensures future refactors preserve 2-decimal rounding.
+++- **Recommended next step**:
+++  Add an assertion with fractional cents to `test_apply_fixed_discount_valid`.
+++
+++## Missing Evidence / Open Questions
+++None. The code and test diff is compact and fully auditable.
+++
+++## Summary
+++- **MUST FIX**: 2 (RF-01, RF-02)
+++- **SHOULD FIX**: 2 (RF-03, RF-04)
+++- **OPTIONAL**: 1 (RF-05)
+++
+++## Reviewer Recommendation
+++[ ] NOT READY  
+++[x] READY AFTER MUST FIX  
+++[ ] READY FOR HUMAN REVIEW  
+++
+++This recommendation is not a merge approval.
 +diff --git a/results/run-context.md b/results/run-context.md
 +new file mode 100644
 +index 0000000..ee6660b
@@ -368,16 +1061,45 @@ index 0000000..97f8bd9
 ++- Working tree clean
 ++- Base commit verified on `main`
 ++- Deterministic test suite passing (27 tests)
++diff --git a/results/verification-report.md b/results/verification-report.md
++new file mode 100644
++index 0000000..eba9f24
++--- /dev/null
+++++ b/results/verification-report.md
++@@ -0,0 +1,21 @@
+++# Verification Report
+++
+++## Change
+++CR-002
+++
+++## Environment
+++- Python version: Python 3.13.7 (tags/v3.13.7:bcee1c3, Aug 14 2025, 14:15:11) [MSC v.1944 64 bit (AMD64)]
+++- Dependencies: Python Standard Library only (`unittest`, `compileall`, `pathlib`, `re`, `sys`)
+++- Commit reviewed: `cbef67d` (feat: implement CR-002)
+++
+++## Checks
+++
+++| Check | Command | Result | Evidence |
+++|---|---|---|---|
+++| Tests | `python -m unittest discover tests` | PASS | `Ran 31 tests in 0.297s - OK` |
+++| Lint | `python -m compileall -q src tests scripts` | PASS | Exit code 0, 0 syntax/bytecode errors |
+++| Repo contract | `python scripts/check_repo_contract.py` | PASS | `REPO_CONTRACT: PASS` (all contract rules verified) |
+++| Security | `python scripts/check_protected_paths.py` | PASS | `PROTECTED_PATHS: PASS` (no forbidden secrets or unauthorized path modifications) |
+++
+++## Overall Gate
+++PASS
 +diff --git a/src/calculator.py b/src/calculator.py
-+index 820b53b..08f0a26 100644
++index 820b53b..b9a4dad 100644
 +--- a/src/calculator.py
 ++++ b/src/calculator.py
-+@@ -18,6 +18,15 @@ def apply_discount(subtotal: float, discount_percent: float) -> float:
++@@ -18,6 +18,17 @@ def apply_discount(subtotal: float, discount_percent: float) -> float:
 +     return round(discounted, 2)
 + 
 + 
 ++def apply_fixed_discount(amount: float, fixed_discount: float) -> float:
 ++    """Apply fixed discount amount to an amount."""
+++    if amount < 0:
+++        raise ValueError("Amount cannot be negative")
 ++    if fixed_discount < 0:
 ++        raise ValueError("Fixed discount cannot be negative")
 ++    if fixed_discount > amount:
@@ -388,7 +1110,7 @@ index 0000000..97f8bd9
 + def apply_tax(amount: float, tax_rate: float) -> float:
 +     """Apply tax rate to an amount."""
 +     if amount < 0:
-+@@ -28,7 +37,10 @@ def apply_tax(amount: float, tax_rate: float) -> float:
++@@ -28,13 +39,18 @@ def apply_tax(amount: float, tax_rate: float) -> float:
 + 
 + 
 + def calculate_order_total(
@@ -400,7 +1122,11 @@ index 0000000..97f8bd9
 + ) -> float:
 +     """Calculate the final order total.
 + 
-+@@ -37,4 +49,5 @@ def calculate_order_total(
++-    The discount (0-100) is applied to the subtotal first; the tax rate is then
++-    applied to the discounted amount.
+++    The percentage discount (0-100) is applied to the subtotal first, followed
+++    by the fixed discount deduction; the tax rate is then applied to the
+++    resulting discounted amount.
 +     """
 +     subtotal = calculate_subtotal(prices)
 +     discounted = apply_discount(subtotal, discount_percent)
@@ -408,7 +1134,7 @@ index 0000000..97f8bd9
 ++    after_fixed = apply_fixed_discount(discounted, fixed_discount)
 ++    return apply_tax(after_fixed, tax_rate)
 +diff --git a/tests/test_calculator.py b/tests/test_calculator.py
-+index 50eafad..c4f6add 100644
++index 50eafad..e0fe8e2 100644
 +--- a/tests/test_calculator.py
 ++++ b/tests/test_calculator.py
 +@@ -2,6 +2,7 @@ import unittest
@@ -419,7 +1145,7 @@ index 0000000..97f8bd9
 +     apply_tax,
 +     calculate_order_total,
 + )
-+@@ -69,6 +70,26 @@ class TestCalculator(unittest.TestCase):
++@@ -69,6 +70,44 @@ class TestCalculator(unittest.TestCase):
 +         with self.assertRaises(ValueError):
 +             calculate_order_total([100.0], 0.0, -0.16)
 + 
@@ -427,10 +1153,15 @@ index 0000000..97f8bd9
 ++        self.assertEqual(apply_fixed_discount(100.0, 15.0), 85.0)
 ++        self.assertEqual(apply_fixed_discount(50.0, 0.0), 50.0)
 ++        self.assertEqual(apply_fixed_discount(20.0, 20.0), 0.0)
+++        self.assertEqual(apply_fixed_discount(100.0, 15.556), 84.44)
 ++
 ++    def test_apply_fixed_discount_negative(self):
 ++        with self.assertRaises(ValueError):
 ++            apply_fixed_discount(100.0, -10.0)
+++        with self.assertRaises(ValueError):
+++            apply_fixed_discount(-50.0, 10.0)
+++        with self.assertRaises(ValueError):
+++            apply_fixed_discount(-50.0, 0.0)
 ++
 ++    def test_apply_fixed_discount_exceeds_amount(self):
 ++        with self.assertRaises(ValueError):
@@ -443,9 +1174,63 @@ index 0000000..97f8bd9
 ++            92.8,
 ++        )
 ++
+++    def test_calculate_order_total_fixed_discount_only(self):
+++        # 100 subtotal -> default 0% discount = 100 -> fixed discount 15 = 85 -> default tax 0% = 85.0
+++        self.assertEqual(calculate_order_total([100.0], fixed_discount=15.0), 85.0)
+++
+++    def test_calculate_order_total_negative_fixed_discount(self):
+++        with self.assertRaises(ValueError):
+++            calculate_order_total([100.0], fixed_discount=-5.0)
+++
+++    def test_calculate_order_total_fixed_discount_exceeds_balance(self):
+++        # Subtotal 100, 50% discount leaves 50; fixed discount 60 exceeds remaining balance
+++        with self.assertRaises(ValueError):
+++            calculate_order_total([100.0], discount_percent=50.0, fixed_discount=60.0)
+++
 + 
 + if __name__ == "__main__":
 +     unittest.main()
+diff --git a/results/re-review-report.md b/results/re-review-report.md
+new file mode 100644
+index 0000000..4b9ac61
+--- /dev/null
++++ b/results/re-review-report.md
+@@ -0,0 +1,35 @@
++# Re-Review Report
++
++## Context
++- **Change ID**: CR-002
++- **Branch / PR**: `ada09/cr-002`
++- **Base commit**: `0cd5e73`
++- **Fix commit reviewed**: `3a9b999` (`fix: address ADA-09 review findings`)
++- **Reviewer agent**: Independent Code Review Subagent
++- **Inputs reviewed**:
++  - `results/review-report.md`
++  - `results/human-review-decisions.md`
++  - Updated codebase (`src/calculator.py`, `tests/test_calculator.py`)
++  - Updated verification run (34 tests passing, repo contract clean)
++
++## Finding Resolution Table
++
++| Finding | Human Decision | Re-review Status | Evidence |
++|---|---|---|---|
++| RF-01 | ACCEPTED | RESOLVED | `src/calculator.py:22-23`: Added explicit validation `if amount < 0: raise ValueError("Amount cannot be negative")`. Negative amount now raises accurate diagnostic error. |
++| RF-02 | ACCEPTED | RESOLVED | `tests/test_calculator.py:82-85`: Added unit tests asserting `ValueError` on `apply_fixed_discount(-50.0, 10.0)` and `apply_fixed_discount(-50.0, 0.0)`. |
++| RF-03 | ACCEPTED | RESOLVED | `tests/test_calculator.py:97-109`: Added integration tests `test_calculate_order_total_fixed_discount_only`, `test_calculate_order_total_negative_fixed_discount`, and `test_calculate_order_total_fixed_discount_exceeds_balance`. |
++| RF-04 | MODIFIED | RESOLVED | `src/calculator.py:48-52`: Docstring updated concisely to explain the 4-step pipeline: subtotal -> percentage discount -> fixed discount -> tax. |
++| RF-05 | ACCEPTED | RESOLVED | `tests/test_calculator.py:77`: Added fractional cent precision test `self.assertEqual(apply_fixed_discount(100.0, 15.556), 84.44)`. |
++
++## Regression Analysis
++- **New MUST FIX Regressions**: None found.
++- **Verification Gates**: 34/34 tests pass cleanly. `compileall`, `check_repo_contract.py`, and `check_protected_paths.py` pass without warning.
++- **Architectural Constraints**: Purity maintained, standard library only, backward-compatibility intact.
++
++## Re-Review Recommendation
++[x] READY FOR HUMAN REVIEW  
++[ ] READY AFTER MUST FIX  
++[ ] NOT READY  
++
++All accepted and modified findings have been verified as fully resolved. The change candidate is safe and ready for final human sign-off.
 diff --git a/results/review-contract.md b/results/review-contract.md
 new file mode 100644
 index 0000000..7f04e4b
