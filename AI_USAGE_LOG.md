@@ -1,53 +1,87 @@
-# Registro de Uso de Inteligencia Artificial (AI Usage Log)
+# Registro de Uso de Inteligencia Artificial (AI Usage Log) - ADA-09
 
-**Herramientas utilizadas:** Claude Code (Claude 3.5 Sonnet) como asistente de desarrollo y orquestación por CLI, y dos subagentes independientes de Claude Code ejecutados en entornos aislados para simular los roles de agentes desarrolladores en las condiciones BEFORE y AFTER.
-
-**Metodología general:**
-Para el desarrollo de esta práctica (ADA-08: *Agent-Ready Repository*), utilicé Claude Code como herramienta principal para estructurar y ejecutar la transformación del repositorio, la auditoría de madurez y los experimentos comparativos. Mi rol consistió en definir las instrucciones de inicio a partir de la guía del curso, seleccionar el proyecto base, supervisar las propuestas de diseño y guardrails, validar la ejecución de pruebas y autorizar la publicación y versionado en GitHub.
+**Práctica:** ADA-09 · Agentic Code Review (Coder Agent -> Reviewer Agent -> Human Review)  
+**Herramientas:** Antigravity con Gemini 3.8 Flash, dividido en dos roles: un agente implementador (coder) y un subagente revisor independiente de solo lectura, con mis revisiones intermedias y aprobación final.  
+**Repositorio:** `ada-09-agentic-code-review`  
+**Rama:** `ada09/cr-002`  
+**Commit base:** `0cd5e73`  
 
 ---
 
-## Entrada 1: Selección del repositorio base y congelamiento del baseline (29/10/2026)
+## 1. Bitácora del Flujo Agéntico
 
-- **Trabajo realizado con el asistente:** Indiqué a Claude que utilizáramos el repositorio de la práctica ADA-06 como base. Entre las carpetas disponibles (`ada06-github-mcp` que contenía únicamente documentación y `ada06-sample-repo` que contaba con código fuente y suite de pruebas), seleccionamos `ada06-sample-repo`. Se clonó el proyecto preservando el historial, se removió el remoto de origen para protegerlo y se creó la etiqueta `ada08-baseline`. Posteriormente se alineó la etiqueta con el commit que incorpora `TASK_UNDER_TEST.md`, asegurando que ambas corridas partieran del mismo requerimiento.
-- **Decisión y supervisión:** Decidí usar `ada06-sample-repo` por ser el proyecto funcional con pruebas unitarias en `src/calculator.py` y verifiqué que la etiqueta `ada08-baseline` quedara fijada en el commit `53d91b6`.
+### Entrada 1: Definición del Change Request (CR-002)
+- **Qué se hizo:** Redacté `CR-002` para agregar descuentos de monto fijo mediante la función `apply_fixed_discount` y un parámetro opcional `fixed_discount=0.0` en `calculate_order_total`. 
+- **Mi decisión:** Revisé que el cambio no modificara `REQUIREMENTS.md` porque es un archivo protegido según las reglas del repo. Autorice incorporar cuatro criterios de aceptación nuevos (`AC-003-8` al `AC-003-11`) dentro de `SPEC.md` bajo `REQ-003`, y firmé la aprobación en `CHANGE_REQUEST.md` antes de arrancar con el código.
 
-## Entrada 2: Auditoría inicial de madurez (Condición BEFORE)
+### Entrada 2: Plan del Coder Agent
+- **Qué se hizo:** El coder agent propuso un plan: registrar los criterios en `SPEC.md`, actualizar `TASKS.md`, escribir la función en `src/calculator.py`, añadir el argumento en `calculate_order_total`, crear tests unitarios y correr las verificaciones.
+- **Mi decisión:** Acepté el plan porque mantenía el módulo con funciones puras y biblioteca estándar, y dejaba `fixed_discount` como parámetro opcional al final para no romper llamadas existentes.
 
-- **Trabajo realizado con el asistente:** Se realizó la auditoría inicial del repositorio base siguiendo las 8 dimensiones y ponderaciones de la rúbrica del curso. Claude analizó los archivos del baseline, corrió las 7 pruebas existentes y asignó la calificación inicial (30/100), fundamentando cada brecha con evidencia del código. Este reporte se registró en un commit antes de iniciar las corridas de prueba para aislar el contexto del agente.
-- **Decisión y supervisión:** Revisé los criterios y acepté la calificación de 30/100, validando que el puntaje de 3/5 en *Build / Run / Test* era el adecuado dado que solo existía el comando de tests, sin linter ni comando unificado de verificación.
+### Entrada 3: Implementación inicial y commit candidato
+- **Qué se hizo:** El agente implementó la función, agregó 4 pruebas en `tests/test_calculator.py`, ejecutó `verify_repo.sh` (los 31 tests pasaron) y redactó `results/coder-report.md`. Después generó el commit candidato `cbef67d`.
+- **Mi decisión:** Revisé los resultados de `scripts/check_repo_contract.py` y `scripts/check_protected_paths.py` en `results/verification-report.md`. Aunque los tests estaban en verde, no di por aprobado el código con el reporte del coder; pasé el diff al subagente revisor.
 
-## Entrada 3: Diseño del Change Request de prueba (CR-001)
+### Entrada 4: Revisión independiente (Reviewer Agent)
+- **Qué se hizo:** Levanté un subagente independiente de solo lectura con `results/review-contract.md`. El revisor comparó el diff con `SPEC.md` y encontró que `apply_fixed_discount` no revisaba si `amount` era negativo. Si alguien pasaba `apply_fixed_discount(-50.0, 0.0)`, el código entraba al bloque `if fixed_discount > amount` y decía que el descuento excedía el monto, ocultando el error real. También detectó que los tests del coder solo probaban descuentos negativos y nunca montos negativos.
+- **Hallazgos reportados:**
+  - `RF-01` (MUST FIX): Falta de validación para `amount < 0` en `apply_fixed_discount`.
+  - `RF-02` (MUST FIX): Falsa confianza en tests por no probar montos negativos.
+  - `RF-03` (SHOULD FIX): Faltaban pruebas de integración para descuentos fijos en `calculate_order_total`.
+  - `RF-04` (SHOULD FIX): El docstring de `calculate_order_total` no mencionaba el nuevo parámetro.
+  - `RF-05` (OPTIONAL): Faltaba probar redondeo con fracciones de centavo.
 
-- **Trabajo realizado con el asistente:** Analizamos las opciones de tareas para medir la autonomía y fricción del agente. Descartamos "implementar descuento" porque la función `apply_discount` ya existía en el código (a pesar de que `SPEC.md` la marcaba como pendiente). Formulamos el Change Request CR-001 para añadir `calculate_order_total(prices, discount_percent=0.0, tax_rate=0.0)` en `src/calculator.py`, referenciando los requerimientos existentes REQ-001 a REQ-003 sin alterarlos. Claude comprobó previamente el resultado esperado (156.6) ejecutando las funciones existentes.
-- **Decisión y supervisión:** Aprobé el diseño de CR-001 como una tarea representativa: no trivial, acotada, determinista y directamente verificable.
+### Entrada 5: Mis decisiones sobre la revisión
+- **Qué se hizo:** Evalué cada observación del revisor en `results/human-review-decisions.md`.
+- **Mi decisión:**
+  - Acepté `RF-01` y `RF-02` porque el mensaje de error era engañoso y violaba `AC-003-9`.
+  - Acepté `RF-03` para cubrir casos donde el descuento fijo supere el saldo que queda tras aplicar el porcentaje.
+  - Modifiqué `RF-04`: estuve de acuerdo en actualizar el docstring, pero pedí redactarlo en dos líneas para mantener el estilo breve de `src/calculator.py`, en vez de la explicación larga que sugería el revisor.
+  - Acepté `RF-05` porque agregar una prueba con tres decimales costaba un minuto y aseguraba el redondeo.
+  - Devolví el trabajo al coder con la compuerta `Return to coder-agent`.
 
-## Entrada 4: Estructuración de AGENTS.md y arquitectura documental
+### Entrada 6: Ciclo de corrección y re-revisión
+- **Qué se hizo:** El coder corrigió la validación de `amount < 0`, ajustó el docstring y sumó 3 pruebas nuevas en `tests/test_calculator.py` (34 tests en total). Creó el commit `3a9b999`. Luego el revisor independiente volvió a evaluar el diff y confirmó en `results/re-review-report.md` que los 5 puntos quedaron resueltos sin generar regresiones.
+- **Mi decisión:** Revisé el archivo `results/PR_EVIDENCE.md` y marqué la compuerta final en `READY FOR HUMAN MERGE`.
 
-- **Trabajo realizado con el asistente:** Siguiendo los principios de reducción de contexto ambiguo, se diseñó `AGENTS.md` como contrato operativo central con enlaces directos a fuentes de verdad en lugar de duplicar especificaciones. Se implementó `CLAUDE.md` como adaptador delgado que solo redirige a `AGENTS.md`, `ARCHITECTURE.md` para delimitar límites de módulos y convenciones de pureza/redondeo, y `docs/REPO_MAP.md` como guía de navegación para evitar exploraciones ciegas.
-- **Decisión y supervisión:** Establecí como regla que los agentes solo pueden incorporar nuevos criterios de aceptación (AC) en `SPEC.md`, reservando cualquier cambio o adición a `REQUIREMENTS.md` para aprobación humana obligatoria.
+---
 
-## Entrada 5: Conversión de reglas en guardrails ejecutables
+## 2. Reflexión Individual
 
-- **Trabajo realizado con el asistente:** Para asegurar que las directrices no fueran meras sugerencias en texto, se convirtieron en scripts deterministas en Python estándar: `scripts/check_protected_paths.py` (bloquea cambios en `REQUIREMENTS.md`, `.github/` o commits con secretos/.env) y `scripts/check_repo_contract.py` (valida existencia de archivos requeridos, consistencia REQ/AC y rutas citadas en docs). Se añadieron 13 pruebas unitarias y se ejecutaron 8 casos de prueba demostrativos en `results/evidence/guardrail-demo.txt`.
-- **Decisión y supervisión:** Durante las pruebas del guardrail se detectó que un archivo `.env` ignorado en `.gitignore` provocaba una discrepancia con la regla original. Respaldé el ajuste de la regla para permitir `.env` locales ignorados y concentrar el bloqueo en prevenir su commit o adición forzada (`git add -f`).
+### 1. ¿Qué encontró el reviewer-agent que el coder-agent no detectó?
+Encontró que `apply_fixed_discount` no tenía una validación para `amount < 0`. Si llamabas a la función con `apply_fixed_discount(-50.0, 0.0)`, la condición `0.0 > -50.0` se cumplía y la función arrojaba `ValueError: Fixed discount cannot exceed amount`. El mensaje decía que un descuento de cero superaba el monto, cuando en realidad el error era que el monto era negativo. El coder no lo notó porque sus pruebas solo probaban montos positivos.
 
-## Entrada 6: Ejecución experimental BEFORE vs. AFTER
+### 2. ¿Qué finding fue más difícil de clasificar y por qué?
+El docstring de `calculate_order_total` (`RF-04`). En principio parecía un detalle cosmético (`OPTIONAL`), pero `calculate_order_total` es la función principal que usan quienes consumen la biblioteca. Si el docstring no explica que el descuento fijo se aplica después del porcentaje y antes de los impuestos, quien use la librería puede asumir un orden distinto. Por eso quedó como `SHOULD FIX`, aunque ajusté la solución para no inflar el texto.
 
-- **Trabajo realizado con el asistente:** Se ejecutó el experimento comparativo empleando dos subagentes limpios e independientes en repositorios aislados (`ada08-runs/run-a` y `ada08-runs/run-b`), exponiendo únicamente el contexto autorizado para cada condición. Claude compiló las métricas de ejecución (número de turnos, archivos consultados, tokens) y verificó de forma independiente las salidas de ambos agentes.
-- **Decisión y supervisión:** Revisé los resultados de ambas corridas: mientras el agente BEFORE requirió explorar el árbol y definir su propio método de validación, el agente AFTER siguió el orden de `AGENTS.md`, utilizó el comando unificado y actualizó de manera consistente `SPEC.md`, `TASKS.md` y `docs/REPO_MAP.md`. Validé además que la suite final pasara a 27 pruebas (7 nuevas pruebas añadidas para CR-001).
+### 3. ¿Qué finding rechazaste o modificaste como humano y qué evidencia usaste?
+Modifiqué `RF-04`. El revisor pedía un docstring largo explicando cada una de las cuatro etapas del cálculo. Miré las otras funciones en `src/calculator.py` (`apply_discount` y `apply_tax`), donde los docstrings tienen apenas una o dos oraciones directas. Pedí que la descripción de `calculate_order_total` se mantuviera igual de corta: explicar en dos frases el orden del porcentaje, el descuento fijo y el impuesto.
 
-## Entrada 7: Identificación de conocimiento implícito
+### 4. ¿Hubo algún test verde que produjera falsa confianza? Explica.
+Sí. El test `test_apply_fixed_discount_negative` del coder tenía esto:
+```python
+with self.assertRaises(ValueError):
+    apply_fixed_discount(100.0, -10.0)
+```
+La suite pasaba al 100%, pero el test solo verificaba el descuento negativo. Como nunca probó un monto negativo, `AC-003-9` parecía cubierto en el papel aunque la mitad de la regla no estaba implementada. Además, al usar `assertRaises(ValueError)` sin validar el texto del error, una llamada con monto negativo habría pasado en verde aun arrojando el mensaje equivocado.
 
-- **Trabajo realizado con el asistente:** Se sistematizaron en `results/implicit-knowledge.md` los 8 puntos de conocimiento implícito que el agente BEFORE tuvo que asumir o inferir (convenciones de error `ValueError`, redondeo monetario a 2 decimales, archivos que no debían modificarse, etc.), asociando cada punto a una mejora concreta implementada en el repositorio.
-- **Decisión y supervisión:** Comprobé que los 8 elementos quedaran formalmente especificados en la documentación o respaldados por los scripts de verificación determinista.
+### 5. ¿Verificaste alguna API o dependencia que parecía plausible? ¿Qué encontraste?
+Revisé si convenía usar `decimal.Decimal` en lugar de `float` para las operaciones de dinero. En código financiero es común usar `Decimal` para evitar errores de redondeo binario. Sin embargo, `ARCHITECTURE.md` dice claramente que el módulo es una biblioteca pura de Python que recibe y devuelve `float` redondeados a dos decimales con `round(..., 2)`. Meter `Decimal` hubiera cambiado los tipos de retorno de la API pública y roto la compatibilidad con el resto del código.
 
-## Entrada 8: Verificación compartida y CI/CD en GitHub
+### 6. ¿Qué arquitectura o regla del repositorio fue más útil para la revisión?
+La regla de `ARCHITECTURE.md` que pide lanzar `ValueError` con un mensaje descriptivo cuando una entrada es inválida. Eso me dio el criterio exacto para aceptar `RF-01`: lanzar un error que culpa al descuento cuando el problema es el monto rompe esa regla.
 
-- **Trabajo realizado con el asistente:** Se configuró `scripts/verify_repo.sh` como único punto de entrada de verificación (tests, lint de sintaxis, contrato del repositorio y rutas protegidas), utilizado por desarrolladores, agentes y el workflow de GitHub Actions (`.github/workflows/verify.yml`). Claude preparó la estructura para el repositorio remoto.
-- **Decisión y supervisión:** Autorice la creación del repositorio público en mi cuenta de GitHub (`RafaMadera18/ada08-agent-ready-repository`), ordené la publicación de las ramas de evidencia (`ada08/before`, `ada08/after`, `ada08/improve`, `main`), y verifiqué en la interfaz de GitHub Actions que todos los workflows terminaran en estado exitoso (verde).
+### 7. ¿Qué problema pudo detectar un check determinista antes que el reviewer-agent?
+`scripts/check_protected_paths.py` detecta de inmediato si alguien toca `REQUIREMENTS.md` o mete archivos `.env` o secretos por accidente. Esos checks corren en un segundo y no gastan tokens ni tiempo de revisión en cosas mecánicas que un script puede validar directamente.
 
-## Entrada 9: Evaluación final y reflexiones
+### 8. ¿Qué parte del review sigue requiriendo criterio humano?
+Decidir qué vale la pena cambiar y qué es sobreingeniería. Un modelo revisor puede sugerir validaciones exhaustivas de tipos, reescrituras de documentación o patrones complejos. Como humano tienes que ver el contexto del proyecto para decidir si una observación justifica frenar el cambio o si basta con un ajuste simple para no complicar el código sin necesidad.
 
-- **Trabajo realizado con el asistente:** Se completó la auditoría AFTER alcanzando un puntaje de 86/100 (+56 puntos sobre el baseline). Claude generó el borrador inicial del reporte comparativo y las respuestas base a las preguntas de reflexión.
-- **Decisión y supervisión:** Acepté el puntaje de 86/100 reconociendo las amenazas a la validez documentadas en el reporte (evaluador compartido y una sola corrida por condición), ejecuté la verificación local completa (`VERIFY_REPO: PASS`) y revisé las respuestas de reflexión en `results/readiness-improvement-report.md`.
+### 9. ¿Qué technical debt aceptaste o diferiste y por qué?
+Acepté seguir usando `float` estándar de Python para los cálculos monetarios. Para un servicio pequeño de calculadora con pocos ítems y redondeo a dos decimales funciona bien. Cambiar todo a `Decimal` requeriría cambiar firmas de funciones, tests y requisitos, lo cual quedaba fuera del alcance de este change request.
+
+### 10. ¿Qué artefactos de este ADA reutilizarías en la Agentic Software Factory final?
+Tres cosas:
+1. `review-contract.md`: fuerza a definir qué se espera antes de mirar el diff, lo que evita que el revisor invente criterios sobre la marcha.
+2. `human-review-decisions.md`: deja por escrito por qué se aceptó, cambió o descartó cada observación antes de tocar el código.
+3. `PR_EVIDENCE.md`: reúne los requisitos, los commits, las pruebas y las firmas de aprobación en un solo archivo fácil de auditar.
