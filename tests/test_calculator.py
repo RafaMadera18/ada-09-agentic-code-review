@@ -74,10 +74,15 @@ class TestCalculator(unittest.TestCase):
         self.assertEqual(apply_fixed_discount(100.0, 15.0), 85.0)
         self.assertEqual(apply_fixed_discount(50.0, 0.0), 50.0)
         self.assertEqual(apply_fixed_discount(20.0, 20.0), 0.0)
+        self.assertEqual(apply_fixed_discount(100.0, 15.556), 84.44)
 
     def test_apply_fixed_discount_negative(self):
         with self.assertRaises(ValueError):
             apply_fixed_discount(100.0, -10.0)
+        with self.assertRaises(ValueError):
+            apply_fixed_discount(-50.0, 10.0)
+        with self.assertRaises(ValueError):
+            apply_fixed_discount(-50.0, 0.0)
 
     def test_apply_fixed_discount_exceeds_amount(self):
         with self.assertRaises(ValueError):
@@ -89,6 +94,19 @@ class TestCalculator(unittest.TestCase):
             calculate_order_total([100.0], discount_percent=10.0, tax_rate=0.16, fixed_discount=10.0),
             92.8,
         )
+
+    def test_calculate_order_total_fixed_discount_only(self):
+        # 100 subtotal -> default 0% discount = 100 -> fixed discount 15 = 85 -> default tax 0% = 85.0
+        self.assertEqual(calculate_order_total([100.0], fixed_discount=15.0), 85.0)
+
+    def test_calculate_order_total_negative_fixed_discount(self):
+        with self.assertRaises(ValueError):
+            calculate_order_total([100.0], fixed_discount=-5.0)
+
+    def test_calculate_order_total_fixed_discount_exceeds_balance(self):
+        # Subtotal 100, 50% discount leaves 50; fixed discount 60 exceeds remaining balance
+        with self.assertRaises(ValueError):
+            calculate_order_total([100.0], discount_percent=50.0, fixed_discount=60.0)
 
 
 if __name__ == "__main__":

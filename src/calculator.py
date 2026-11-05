@@ -20,6 +20,8 @@ def apply_discount(subtotal: float, discount_percent: float) -> float:
 
 def apply_fixed_discount(amount: float, fixed_discount: float) -> float:
     """Apply fixed discount amount to an amount."""
+    if amount < 0:
+        raise ValueError("Amount cannot be negative")
     if fixed_discount < 0:
         raise ValueError("Fixed discount cannot be negative")
     if fixed_discount > amount:
@@ -44,8 +46,9 @@ def calculate_order_total(
 ) -> float:
     """Calculate the final order total.
 
-    The discount (0-100) is applied to the subtotal first; the tax rate is then
-    applied to the discounted amount.
+    The percentage discount (0-100) is applied to the subtotal first, followed
+    by the fixed discount deduction; the tax rate is then applied to the
+    resulting discounted amount.
     """
     subtotal = calculate_subtotal(prices)
     discounted = apply_discount(subtotal, discount_percent)

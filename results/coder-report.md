@@ -58,3 +58,22 @@ PASS (31/31 tests passing, compileall clean, repo contract clean, protected path
 [x] Ready for independent review
 
 This report is NOT an approval.
+
+
+---
+
+## Fix Cycle
+### Findings Addressed
+- **RF-01 (MUST FIX)**: Added explicit check `if amount < 0: raise ValueError("Amount cannot be negative")` in `apply_fixed_discount`.
+- **RF-02 (MUST FIX)**: Added unit test assertions in `test_apply_fixed_discount_negative` verifying negative amount inputs (`-50.0, 10.0` and `-50.0, 0.0`).
+- **RF-03 (SHOULD FIX)**: Added unit tests `test_calculate_order_total_negative_fixed_discount`, `test_calculate_order_total_fixed_discount_exceeds_balance`, and `test_calculate_order_total_fixed_discount_only`.
+- **RF-04 (SHOULD FIX)**: Updated docstring of `calculate_order_total` to document `fixed_discount` and the 4-step pipeline sequence.
+- **RF-05 (OPTIONAL)**: Added fractional cent rounding assertion (`100.0, 15.556 -> 84.44`) to `test_apply_fixed_discount_valid`.
+
+### Verification after Fix Cycle
+- `python -m unittest discover tests` -> 34 tests passing (3 new regression tests added)
+- `python -m compileall -q src tests scripts` -> PASS
+- `python scripts/check_repo_contract.py` -> REPO_CONTRACT: PASS
+- `python scripts/check_protected_paths.py` -> PROTECTED_PATHS: PASS
+
+This report is NOT an approval.
