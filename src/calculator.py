@@ -18,6 +18,15 @@ def apply_discount(subtotal: float, discount_percent: float) -> float:
     return round(discounted, 2)
 
 
+def apply_fixed_discount(amount: float, fixed_discount: float) -> float:
+    """Apply fixed discount amount to an amount."""
+    if fixed_discount < 0:
+        raise ValueError("Fixed discount cannot be negative")
+    if fixed_discount > amount:
+        raise ValueError("Fixed discount cannot exceed amount")
+    return round(amount - fixed_discount, 2)
+
+
 def apply_tax(amount: float, tax_rate: float) -> float:
     """Apply tax rate to an amount."""
     if amount < 0:
@@ -28,7 +37,10 @@ def apply_tax(amount: float, tax_rate: float) -> float:
 
 
 def calculate_order_total(
-    prices: list[float], discount_percent: float = 0.0, tax_rate: float = 0.0
+    prices: list[float],
+    discount_percent: float = 0.0,
+    tax_rate: float = 0.0,
+    fixed_discount: float = 0.0,
 ) -> float:
     """Calculate the final order total.
 
@@ -37,4 +49,5 @@ def calculate_order_total(
     """
     subtotal = calculate_subtotal(prices)
     discounted = apply_discount(subtotal, discount_percent)
-    return apply_tax(discounted, tax_rate)
+    after_fixed = apply_fixed_discount(discounted, fixed_discount)
+    return apply_tax(after_fixed, tax_rate)

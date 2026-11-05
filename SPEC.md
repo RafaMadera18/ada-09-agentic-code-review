@@ -34,6 +34,9 @@ Function: `apply_discount(subtotal: float, discount_percent: float) -> float`
 | AC-003-2 | A discount below 0 or above 100 raises `ValueError`. | `test_apply_discount_invalid` |
 | AC-003-3 | A negative subtotal raises `ValueError`. | `test_apply_discount_invalid` |
 | AC-003-4 | When a discount and a tax rate are both applied, the discount is applied first and the tax is calculated on the discounted amount (from "before tax calculation" in REQ-003). | `test_calculate_order_total_discount_then_tax` |
+| AC-003-8 | `apply_fixed_discount(amount, fixed_discount)` returns `amount - fixed_discount` rounded to 2 decimals. | `test_apply_fixed_discount_valid` |
+| AC-003-9 | Negative `amount` or negative `fixed_discount` passed to `apply_fixed_discount` raises `ValueError`. | `test_apply_fixed_discount_negative` |
+| AC-003-10 | A `fixed_discount` exceeding `amount` passed to `apply_fixed_discount` raises `ValueError`. | `test_apply_fixed_discount_exceeds_amount` |
 
 ## Order Total (combines REQ-001, REQ-002, REQ-003)
 
@@ -48,6 +51,7 @@ Function: `calculate_order_total(prices: list[float], discount_percent: float = 
 | AC-003-5 | `calculate_order_total([100.0, 50.0], 10.0, 0.16)` returns `156.6`; a 100% discount returns `0.0`. | `test_calculate_order_total_discount_then_tax`, `test_calculate_order_total_full_discount` |
 | AC-003-6 | A discount outside 0-100 passed to `calculate_order_total` raises `ValueError`. | `test_calculate_order_total_invalid_discount` |
 | AC-003-7 | `discount_percent` and `tax_rate` are optional and default to `0.0`. | `test_calculate_order_total_defaults` |
+| AC-003-11 | `fixed_discount` is optional and defaults to `0.0`. Order total applies percentage discount first, then fixed discount, then tax. | `test_calculate_order_total_fixed_discount` |
 
 ## Conventions that apply to every criterion
 
