@@ -68,10 +68,10 @@ index bde8f3b..b9a1ea6 100644
 +| CR-002 | Fixed-amount discount support in calculator | REQ-003 | In progress |
 diff --git a/results/coder-report.md b/results/coder-report.md
 new file mode 100644
-index 0000000..dd08580
+index 0000000..562bfa0
 --- /dev/null
 +++ b/results/coder-report.md
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,79 @@
 +# Coder Agent Report
 +
 +## Change
@@ -132,6 +132,491 @@ index 0000000..dd08580
 +[x] Ready for independent review
 +
 +This report is NOT an approval.
++
++
++---
++
++## Fix Cycle
++### Findings Addressed
++- **RF-01 (MUST FIX)**: Added explicit check `if amount < 0: raise ValueError("Amount cannot be negative")` in `apply_fixed_discount`.
++- **RF-02 (MUST FIX)**: Added unit test assertions in `test_apply_fixed_discount_negative` verifying negative amount inputs (`-50.0, 10.0` and `-50.0, 0.0`).
++- **RF-03 (SHOULD FIX)**: Added unit tests `test_calculate_order_total_negative_fixed_discount`, `test_calculate_order_total_fixed_discount_exceeds_balance`, and `test_calculate_order_total_fixed_discount_only`.
++- **RF-04 (SHOULD FIX)**: Updated docstring of `calculate_order_total` to document `fixed_discount` and the 4-step pipeline sequence.
++- **RF-05 (OPTIONAL)**: Added fractional cent rounding assertion (`100.0, 15.556 -> 84.44`) to `test_apply_fixed_discount_valid`.
++
++### Verification after Fix Cycle
++- `python -m unittest discover tests` -> 34 tests passing (3 new regression tests added)
++- `python -m compileall -q src tests scripts` -> PASS
++- `python scripts/check_repo_contract.py` -> REPO_CONTRACT: PASS
++- `python scripts/check_protected_paths.py` -> PROTECTED_PATHS: PASS
++
++This report is NOT an approval.
+diff --git a/results/commits.txt b/results/commits.txt
+new file mode 100644
+index 0000000..5569ae9
+--- /dev/null
++++ b/results/commits.txt
+@@ -0,0 +1 @@
++´╗┐cbef67d feat: implement CR-002
+diff --git a/results/human-review-decisions.md b/results/human-review-decisions.md
+new file mode 100644
+index 0000000..74c59b0
+--- /dev/null
++++ b/results/human-review-decisions.md
+@@ -0,0 +1,41 @@
++# Human Review Decisions
++
++## Change
++CR-002: Fixed-amount discount support in calculator service
++
++### RF-01
++- **Reviewer severity**: MUST FIX
++- **Human decision**: ACCEPTED
++- **Reason**: The finding is technically sound and well-evidenced. Missing `if amount < 0:` causes negative amounts to trigger the `fixed_discount > amount` branch, returning a misleading error message ("Fixed discount cannot exceed amount") rather than indicating an invalid amount. This directly violates AC-003-9 and the architecture convention requiring clear `ValueError` diagnostics.
++- **Required action**: Add explicit check `if amount < 0: raise ValueError("Amount cannot be negative")` as the first line of `apply_fixed_discount`.
++
++### RF-02
++- **Reviewer severity**: MUST FIX
++- **Human decision**: ACCEPTED
++- **Reason**: The test suite produced false confidence by testing only `apply_fixed_discount(100.0, -10.0)` while neglecting negative amounts (`-50.0, 10.0` and `-50.0, 0.0`). Testing both boundaries is required to verify AC-003-9.
++- **Required action**: Add unit test assertions in `test_apply_fixed_discount_negative` covering negative amounts.
++
++### RF-03
++- **Reviewer severity**: SHOULD FIX
++- **Human decision**: ACCEPTED
++- **Reason**: `calculate_order_total` combines multiple business rules; omitting negative fixed discount and edge-case boundary checks leaves integration regressions unchecked.
++- **Required action**: Add test cases in `test_calculator.py` for `calculate_order_total` with negative fixed discount and fixed discount exceeding post-discount subtotal.
++
++### RF-04
++- **Reviewer severity**: SHOULD FIX
++- **Human decision**: MODIFIED
++- **Reason**: The docstring is indeed outdated, but rather than verbose prose, it should follow the concise style established across `src/calculator.py`.
++- **Final severity**: SHOULD FIX
++- **Required action**: Update `calculate_order_total` docstring to document `fixed_discount` and the 4-step sequence concisely.
++
++### RF-05
++- **Reviewer severity**: OPTIONAL
++- **Human decision**: ACCEPTED
++- **Reason**: Adding a fractional cents test is straightforward, low-risk, and ensures floating-point rounding precision is safeguarded.
++- **Final severity**: OPTIONAL
++- **Required action**: Include `apply_fixed_discount(100.0, 15.556)` in `test_apply_fixed_discount_valid`.
++
++## Human Gate
++[x] Return to coder-agent  
++[ ] Ready for final re-review  
++[ ] Stop / escalate  
+diff --git a/results/pr.diff b/results/pr.diff
+new file mode 100644
+index 0000000..97f8bd9
+--- /dev/null
++++ b/results/pr.diff
+@@ -0,0 +1,235 @@
++´╗┐diff --git a/CHANGE_REQUEST.md b/CHANGE_REQUEST.md
++new file mode 100644
++index 0000000..c1276a6
++--- /dev/null
+++++ b/CHANGE_REQUEST.md
++@@ -0,0 +1,31 @@
+++# Change Request
+++
+++Change ID: CR-002
+++
+++## Goal
+++Add fixed-amount discount support through a new pure function `apply_fixed_discount(amount: float, fixed_discount: float) -> float` and integrate an optional `fixed_discount: float = 0.0` parameter into `calculate_order_total(prices, discount_percent=0.0, tax_rate=0.0, fixed_discount=0.0) -> float` while preserving full backward compatibility for existing callers.
+++
+++## Requirements Covered
+++- REQ-003 (Discounts)
+++- AC-003-8 (Fixed discount deduction rounded to 2 decimals)
+++- AC-003-9 (Validation against negative amounts and negative fixed discounts)
+++- AC-003-10 (Validation against fixed discounts exceeding amount)
+++- AC-003-11 (Discount sequencing in `calculate_order_total`: subtotal -> percentage discount -> fixed discount -> tax)
+++
+++## Constraints
+++- Follow AGENTS.md.
+++- Use REQUIREMENTS.md and SPEC.md as the source of truth.
+++- Preserve architecture boundaries: pure functions in `src/calculator.py`, standard library only, no I/O, raise `ValueError` on invalid inputs, round money outputs to 2 decimal places.
+++- Do not weaken existing tests.
+++- Maintain backward compatibility of `calculate_order_total`.
+++
+++## Verification
+++- Unit tests cover valid fixed discounts, zero discount, discount matching amount, negative amount, negative discount, and discount exceeding amount.
+++- Unit tests verify order total calculation combining prices, percentage discount, fixed discount, and tax rate.
+++- All 27 existing tests pass without modification.
+++- Deterministic verification command (`verify_repo.sh` / standard suite) passes.
+++
+++## Human Approval
+++Approved to implement: YES
+++Approved by: Rafael (Lead Reviewer / Human Gate 0)
+++Date: 2026-11-05
++diff --git a/SPEC.md b/SPEC.md
++index 3f32313..cc3e504 100644
++--- a/SPEC.md
+++++ b/SPEC.md
++@@ -34,6 +34,9 @@ Function: `apply_discount(subtotal: float, discount_percent: float) -> float`
++ | AC-003-2 | A discount below 0 or above 100 raises `ValueError`. | `test_apply_discount_invalid` |
++ | AC-003-3 | A negative subtotal raises `ValueError`. | `test_apply_discount_invalid` |
++ | AC-003-4 | When a discount and a tax rate are both applied, the discount is applied first and the tax is calculated on the discounted amount (from "before tax calculation" in REQ-003). | `test_calculate_order_total_discount_then_tax` |
+++| AC-003-8 | `apply_fixed_discount(amount, fixed_discount)` returns `amount - fixed_discount` rounded to 2 decimals. | `test_apply_fixed_discount_valid` |
+++| AC-003-9 | Negative `amount` or negative `fixed_discount` passed to `apply_fixed_discount` raises `ValueError`. | `test_apply_fixed_discount_negative` |
+++| AC-003-10 | A `fixed_discount` exceeding `amount` passed to `apply_fixed_discount` raises `ValueError`. | `test_apply_fixed_discount_exceeds_amount` |
++ 
++ ## Order Total (combines REQ-001, REQ-002, REQ-003)
++ 
++@@ -48,6 +51,7 @@ Function: `calculate_order_total(prices: list[float], discount_percent: float =
++ | AC-003-5 | `calculate_order_total([100.0, 50.0], 10.0, 0.16)` returns `156.6`; a 100% discount returns `0.0`. | `test_calculate_order_total_discount_then_tax`, `test_calculate_order_total_full_discount` |
++ | AC-003-6 | A discount outside 0-100 passed to `calculate_order_total` raises `ValueError`. | `test_calculate_order_total_invalid_discount` |
++ | AC-003-7 | `discount_percent` and `tax_rate` are optional and default to `0.0`. | `test_calculate_order_total_defaults` |
+++| AC-003-11 | `fixed_discount` is optional and defaults to `0.0`. Order total applies percentage discount first, then fixed discount, then tax. | `test_calculate_order_total_fixed_discount` |
++ 
++ ## Conventions that apply to every criterion
++ 
++diff --git a/TASKS.md b/TASKS.md
++index bde8f3b..b9a1ea6 100644
++--- a/TASKS.md
+++++ b/TASKS.md
++@@ -9,3 +9,4 @@ Work items and their link to requirements. Requirements are defined only in `REQ
++ | T-003 | Percentage discount calculation | REQ-003 | Done |
++ | T-004 | Repository readiness for coding agents (ADA-08) | - | Done |
++ | CR-001 | Change request described in `TASK_UNDER_TEST.md` | REQ-001, REQ-002, REQ-003 | Done |
+++| CR-002 | Fixed-amount discount support in calculator | REQ-003 | In progress |
++diff --git a/results/coder-report.md b/results/coder-report.md
++new file mode 100644
++index 0000000..dd08580
++--- /dev/null
+++++ b/results/coder-report.md
++@@ -0,0 +1,60 @@
+++# Coder Agent Report
+++
+++## Change
+++Change ID: CR-002  
+++Branch: ada09/cr-002  
+++Base commit: 0cd5e73  
+++
+++## Requirements Covered
+++- FR-003 (Discounts / REQ-003)
+++- AC-003-8 (Fixed discount deduction and rounding)
+++- AC-003-9 (Validation against negative values)
+++- AC-003-10 (Validation against discount exceeding amount)
+++- AC-003-11 (Discount sequencing in calculate_order_total)
+++
+++## Implementation Plan
+++1. Add acceptance criteria AC-003-8 through AC-003-11 to `SPEC.md` under REQ-003.
+++2. Update task tracking in `TASKS.md` for CR-002.
+++3. Implement pure function `apply_fixed_discount(amount: float, fixed_discount: float) -> float` in `src/calculator.py`.
+++4. Update `calculate_order_total` in `src/calculator.py` with optional `fixed_discount: float = 0.0`.
+++5. Add unit tests in `tests/test_calculator.py` for valid deductions, negative discounts, discount exceeding amount, and composite order total.
+++6. Run deterministic verification suite (`unittest`, `compileall`, `check_repo_contract.py`, `check_protected_paths.py`).
+++
+++## Files Changed
+++- `CHANGE_REQUEST.md` (Change request definition)
+++- `SPEC.md` (Added acceptance criteria AC-003-8 to AC-003-11)
+++- `TASKS.md` (Updated task tracking for CR-002)
+++- `src/calculator.py` (Added `apply_fixed_discount`, updated `calculate_order_total`)
+++- `tests/test_calculator.py` (Added test cases for fixed discount behavior)
+++- `results/run-context.md` (Execution context)
+++
+++## Tests Added / Updated
+++- `test_apply_fixed_discount_valid` in `tests/test_calculator.py`
+++- `test_apply_fixed_discount_negative` in `tests/test_calculator.py`
+++- `test_apply_fixed_discount_exceeds_amount` in `tests/test_calculator.py`
+++- `test_calculate_order_total_fixed_discount` in `tests/test_calculator.py`
+++
+++## Commands Executed
+++- `python -m unittest discover tests` -> 31 tests passed
+++- `python -m compileall -q src tests scripts` -> syntax check passed
+++- `python scripts/check_repo_contract.py` -> REPO_CONTRACT: PASS
+++- `python scripts/check_protected_paths.py` -> PROTECTED_PATHS: PASS
+++
+++## Verification Result
+++PASS (31/31 tests passing, compileall clean, repo contract clean, protected paths clean).
+++
+++## Assumptions
+++- Fixed discount is applied to the discounted subtotal after percentage discount has been evaluated.
+++- Deducting the exact full amount resulting in 0.0 is permitted.
+++
+++## Known Limitations
+++- Only standard Python float representations are used.
+++- No interactive UI or CLI added as restricted by `ARCHITECTURE.md`.
+++
+++## Self-Check
+++[x] Scope respected
+++[x] Existing tests not weakened
+++[x] No undocumented dependency/API introduced
+++[x] Ready for independent review
+++
+++This report is NOT an approval.
++diff --git a/results/run-context.md b/results/run-context.md
++new file mode 100644
++index 0000000..ee6660b
++--- /dev/null
+++++ b/results/run-context.md
++@@ -0,0 +1,17 @@
+++# Run Context
+++
+++## Change Request
+++- **Change ID**: CR-002
+++- **Branch**: `ada09/cr-002`
+++- **Base Commit**: `0cd5e73` (`docs(ada08): finalize AI usage log and individual reflection`)
+++- **Repository**: `ada-09-agentic-code-review`
+++- **Date**: 2026-11-05
+++- **Environment**:
+++  - Python: 3.13.7
+++  - Platform: Windows (x86_64)
+++  - Git Branch: `ada09/cr-002`
+++
+++## Initial Status
+++- Working tree clean
+++- Base commit verified on `main`
+++- Deterministic test suite passing (27 tests)
++diff --git a/src/calculator.py b/src/calculator.py
++index 820b53b..08f0a26 100644
++--- a/src/calculator.py
+++++ b/src/calculator.py
++@@ -18,6 +18,15 @@ def apply_discount(subtotal: float, discount_percent: float) -> float:
++     return round(discounted, 2)
++ 
++ 
+++def apply_fixed_discount(amount: float, fixed_discount: float) -> float:
+++    """Apply fixed discount amount to an amount."""
+++    if fixed_discount < 0:
+++        raise ValueError("Fixed discount cannot be negative")
+++    if fixed_discount > amount:
+++        raise ValueError("Fixed discount cannot exceed amount")
+++    return round(amount - fixed_discount, 2)
+++
+++
++ def apply_tax(amount: float, tax_rate: float) -> float:
++     """Apply tax rate to an amount."""
++     if amount < 0:
++@@ -28,7 +37,10 @@ def apply_tax(amount: float, tax_rate: float) -> float:
++ 
++ 
++ def calculate_order_total(
++-    prices: list[float], discount_percent: float = 0.0, tax_rate: float = 0.0
+++    prices: list[float],
+++    discount_percent: float = 0.0,
+++    tax_rate: float = 0.0,
+++    fixed_discount: float = 0.0,
++ ) -> float:
++     """Calculate the final order total.
++ 
++@@ -37,4 +49,5 @@ def calculate_order_total(
++     """
++     subtotal = calculate_subtotal(prices)
++     discounted = apply_discount(subtotal, discount_percent)
++-    return apply_tax(discounted, tax_rate)
+++    after_fixed = apply_fixed_discount(discounted, fixed_discount)
+++    return apply_tax(after_fixed, tax_rate)
++diff --git a/tests/test_calculator.py b/tests/test_calculator.py
++index 50eafad..c4f6add 100644
++--- a/tests/test_calculator.py
+++++ b/tests/test_calculator.py
++@@ -2,6 +2,7 @@ import unittest
++ from src.calculator import (
++     calculate_subtotal,
++     apply_discount,
+++    apply_fixed_discount,
++     apply_tax,
++     calculate_order_total,
++ )
++@@ -69,6 +70,26 @@ class TestCalculator(unittest.TestCase):
++         with self.assertRaises(ValueError):
++             calculate_order_total([100.0], 0.0, -0.16)
++ 
+++    def test_apply_fixed_discount_valid(self):
+++        self.assertEqual(apply_fixed_discount(100.0, 15.0), 85.0)
+++        self.assertEqual(apply_fixed_discount(50.0, 0.0), 50.0)
+++        self.assertEqual(apply_fixed_discount(20.0, 20.0), 0.0)
+++
+++    def test_apply_fixed_discount_negative(self):
+++        with self.assertRaises(ValueError):
+++            apply_fixed_discount(100.0, -10.0)
+++
+++    def test_apply_fixed_discount_exceeds_amount(self):
+++        with self.assertRaises(ValueError):
+++            apply_fixed_discount(50.0, 60.0)
+++
+++    def test_calculate_order_total_fixed_discount(self):
+++        # 100 subtotal -> 10% discount = 90 -> fixed discount 10 = 80 -> tax 16% = 92.8
+++        self.assertEqual(
+++            calculate_order_total([100.0], discount_percent=10.0, tax_rate=0.16, fixed_discount=10.0),
+++            92.8,
+++        )
+++
++ 
++ if __name__ == "__main__":
++     unittest.main()
+diff --git a/results/review-contract.md b/results/review-contract.md
+new file mode 100644
+index 0000000..7f04e4b
+--- /dev/null
++++ b/results/review-contract.md
+@@ -0,0 +1,30 @@
++# Review Contract
++
++## Change
++CR-002: Fixed-amount discount support in calculator service
++
++## Requirements / Acceptance Criteria
++- FR-003 / REQ-003: Percentage & Promotional Discount calculation
++- AC-003-8: `apply_fixed_discount(amount: float, fixed_discount: float) -> float` returns `amount - fixed_discount` rounded to 2 decimals.
++- AC-003-9: Negative `amount` or negative `fixed_discount` passed to `apply_fixed_discount` raises `ValueError`.
++- AC-003-10: `fixed_discount` exceeding `amount` passed to `apply_fixed_discount` raises `ValueError`.
++- AC-003-11: `fixed_discount` is optional in `calculate_order_total` defaulting to `0.0`. Sequencing must be: subtotal -> percentage discount -> fixed discount -> tax.
++
++## Architecture Constraints
++- Expected dependency flow: `tests/` -> `src/`. `src/calculator.py` must only use standard library, no I/O, no network, no global mutable state.
++- Business-rule location: All calculation logic and input validation must reside in `src/calculator.py`.
++- Protected boundaries: `REQUIREMENTS.md`, `generated/`, `.github/workflows/` must not be modified without explicit authorization. No third-party dependencies.
++
++## Review Rules
++- Verify requirement coverage: Ensure all acceptance criteria AC-003-8 to AC-003-11 are genuinely implemented and verified.
++- Verify every called API/dependency exists in production code (standard library only).
++- Check architecture boundaries and conventions (pure functions, `ValueError` on bad inputs, rounding to 2 decimals).
++- Inspect tests for masking / false confidence: check for missing boundary tests (e.g. negative amount, zero amount, compound discount edge cases).
++- Check regression and backward-compatibility behavior (existing tests pass, positional/keyword argument compatibility).
++- Identify unnecessary technical debt (outdated docstrings, unhandled edge cases).
++- Cite evidence for every finding (file, line number, concrete code or test deficiency).
++
++## Severity
++- **MUST FIX**: Requirement violation, regression, security/integrity risk, hallucinated API/dependency, broken architecture constraint, or defect that makes the change unsafe to approve.
++- **SHOULD FIX**: Significant maintainability, coverage, design, or clarity issue that does not block the requested behavior.
++- **OPTIONAL**: Non-blocking improvement outside the minimum acceptance threshold.
+diff --git a/results/review-report.md b/results/review-report.md
+new file mode 100644
+index 0000000..adcb315
+--- /dev/null
++++ b/results/review-report.md
+@@ -0,0 +1,129 @@
++# Independent Review Report
++
++## Review Context
++- **Change ID**: CR-002
++- **Branch / PR**: `ada09/cr-002`
++- **Commit reviewed**: `cbef67d` (`feat: implement CR-002`)
++- **Reviewer agent**: Independent Code Review Subagent (`research`)
++- **Model**: Gemini 3.8 Flash
++- **Tools / permissions**: Read-only codebase tools, deterministic test and contract execution
++
++## Requirements Reviewed
++- FR-003 / REQ-003: Percentage & Promotional Discounts
++- AC-003-8: `apply_fixed_discount` calculation and rounding to 2 decimals
++- AC-003-9: Negative `amount` or negative `fixed_discount` raises `ValueError`
++- AC-003-10: `fixed_discount` exceeding `amount` raises `ValueError`
++- AC-003-11: `fixed_discount` optional parameter in `calculate_order_total`, sequencing subtotal -> discount % -> fixed discount -> tax
++
++## Verification Evidence Reviewed
++- Automated test output: 31 tests passing (exit code 0)
++- Lint output: `compileall` clean (exit code 0)
++- Repo contract: `check_repo_contract.py` PASS
++- Security / protected paths: `check_protected_paths.py` PASS
++- Candidate diff: `results/pr.diff` (7 files changed, +149, -2)
++
++## Findings
++
++### RF-01 ÔÇö MUST FIX
++- **Category**: Input Validation / Requirement Violation
++- **Requirement / AC**: AC-003-9, ARCHITECTURE.md (descriptive ValueError)
++- **File / Line**: `src/calculator.py:21-27`
++- **Evidence**:
++  ```python
++  def apply_fixed_discount(amount: float, fixed_discount: float) -> float:
++      """Apply fixed discount amount to an amount."""
++      if fixed_discount < 0:
++          raise ValueError("Fixed discount cannot be negative")
++      if fixed_discount > amount:
++          raise ValueError("Fixed discount cannot exceed amount")
++      return round(amount - fixed_discount, 2)
++  ```
++- **Problem**:
++  `apply_fixed_discount` lacks an explicit check for `amount < 0`. Unlike `apply_discount` (`if subtotal < 0: raise ValueError("Subtotal cannot be negative")`) and `apply_tax` (`if amount < 0: raise ValueError("Amount cannot be negative")`), passing a negative amount (e.g. `apply_fixed_discount(-50.0, 0.0)`) fails into `if fixed_discount > amount`, raising a misleading `ValueError: Fixed discount cannot exceed amount`.
++- **Risk**:
++  Violates AC-003-9 and architectural error handling conventions. Masks invalid domain inputs with confusing error messages.
++- **Recommended next step**:
++  Add `if amount < 0: raise ValueError("Amount cannot be negative")` as the first validation check in `apply_fixed_discount`.
++
++### RF-02 ÔÇö MUST FIX
++- **Category**: Test Quality / False Confidence
++- **Requirement / AC**: AC-003-9, CHANGE_REQUEST.md Verification
++- **File / Line**: `tests/test_calculator.py:78-81`
++- **Evidence**:
++  ```python
++  def test_apply_fixed_discount_negative(self):
++      with self.assertRaises(ValueError):
++          apply_fixed_discount(100.0, -10.0)
++  ```
++- **Problem**:
++  The coder report claims full coverage of negative inputs, but `test_apply_fixed_discount_negative` only tested negative `fixed_discount`, omitting negative `amount`. This test gap gave false confidence that all aspects of AC-003-9 were verified when they were not.
++- **Risk**:
++  False confidence in green test suite; regressions or invalid inputs go undetected in automated pipelines.
++- **Recommended next step**:
++  Add assertions in `test_apply_fixed_discount_negative` testing `apply_fixed_discount(-50.0, 10.0)` and `apply_fixed_discount(-50.0, 0.0)`.
++
++### RF-03 ÔÇö SHOULD FIX
++- **Category**: Integration Test Coverage
++- **Requirement / AC**: AC-003-11
++- **File / Line**: `tests/test_calculator.py:86-92`
++- **Evidence**:
++  Only one positive test case was added for `calculate_order_total` with `fixed_discount`.
++- **Problem**:
++  No tests verify that `calculate_order_total` raises `ValueError` when given a negative `fixed_discount` or when `fixed_discount` exceeds the discounted subtotal (e.g., subtotal 100 with 50% discount leaves 50; fixed discount of 60 exceeds remaining balance).
++- **Risk**:
++  Edge cases in the multi-stage discount pipeline could fail unexpectedly or behave inconsistently.
++- **Recommended next step**:
++  Add unit tests for `calculate_order_total` with negative fixed discount and fixed discount exceeding post-percentage discounted subtotal.
++
++### RF-04 ÔÇö SHOULD FIX
++- **Category**: Documentation & Technical Debt
++- **Requirement / AC**: AC-003-11, ARCHITECTURE.md
++- **File / Line**: `src/calculator.py:45-49`
++- **Evidence**:
++  ```python
++  def calculate_order_total(
++      prices: list[float],
++      discount_percent: float = 0.0,
++      tax_rate: float = 0.0,
++      fixed_discount: float = 0.0,
++  ) -> float:
++      """Calculate the final order total.
++
++      The discount (0-100) is applied to the subtotal first; the tax rate is then
++      applied to the discounted amount.
++      """
++  ```
++- **Problem**:
++  Docstring does not mention `fixed_discount` or explain the 4-step sequence (subtotal -> percentage discount -> fixed discount -> tax).
++- **Risk**:
++  Developers using the library will not have accurate documentation of function parameters and execution order.
++- **Recommended next step**:
++  Update docstring to document `fixed_discount` and the complete pipeline.
++
++### RF-05 ÔÇö OPTIONAL
++- **Category**: Precision Testing
++- **Requirement / AC**: AC-003-8
++- **File / Line**: `tests/test_calculator.py:73-77`
++- **Evidence**:
++  All test inputs in `test_apply_fixed_discount_valid` use round numbers without fractional cents.
++- **Problem**:
++  Test cases do not exercise boundary floating-point cent rounding (e.g., `apply_fixed_discount(100.0, 15.556)`).
++- **Risk**:
++  Low; `round(..., 2)` is present in code, but explicit rounding test ensures future refactors preserve 2-decimal rounding.
++- **Recommended next step**:
++  Add an assertion with fractional cents to `test_apply_fixed_discount_valid`.
++
++## Missing Evidence / Open Questions
++None. The code and test diff is compact and fully auditable.
++
++## Summary
++- **MUST FIX**: 2 (RF-01, RF-02)
++- **SHOULD FIX**: 2 (RF-03, RF-04)
++- **OPTIONAL**: 1 (RF-05)
++
++## Reviewer Recommendation
++[ ] NOT READY  
++[x] READY AFTER MUST FIX  
++[ ] READY FOR HUMAN REVIEW  
++
++This recommendation is not a merge approval.
 diff --git a/results/run-context.md b/results/run-context.md
 new file mode 100644
 index 0000000..ee6660b
@@ -155,16 +640,45 @@ index 0000000..ee6660b
 +- Working tree clean
 +- Base commit verified on `main`
 +- Deterministic test suite passing (27 tests)
+diff --git a/results/verification-report.md b/results/verification-report.md
+new file mode 100644
+index 0000000..eba9f24
+--- /dev/null
++++ b/results/verification-report.md
+@@ -0,0 +1,21 @@
++# Verification Report
++
++## Change
++CR-002
++
++## Environment
++- Python version: Python 3.13.7 (tags/v3.13.7:bcee1c3, Aug 14 2025, 14:15:11) [MSC v.1944 64 bit (AMD64)]
++- Dependencies: Python Standard Library only (`unittest`, `compileall`, `pathlib`, `re`, `sys`)
++- Commit reviewed: `cbef67d` (feat: implement CR-002)
++
++## Checks
++
++| Check | Command | Result | Evidence |
++|---|---|---|---|
++| Tests | `python -m unittest discover tests` | PASS | `Ran 31 tests in 0.297s - OK` |
++| Lint | `python -m compileall -q src tests scripts` | PASS | Exit code 0, 0 syntax/bytecode errors |
++| Repo contract | `python scripts/check_repo_contract.py` | PASS | `REPO_CONTRACT: PASS` (all contract rules verified) |
++| Security | `python scripts/check_protected_paths.py` | PASS | `PROTECTED_PATHS: PASS` (no forbidden secrets or unauthorized path modifications) |
++
++## Overall Gate
++PASS
 diff --git a/src/calculator.py b/src/calculator.py
-index 820b53b..08f0a26 100644
+index 820b53b..b9a4dad 100644
 --- a/src/calculator.py
 +++ b/src/calculator.py
-@@ -18,6 +18,15 @@ def apply_discount(subtotal: float, discount_percent: float) -> float:
+@@ -18,6 +18,17 @@ def apply_discount(subtotal: float, discount_percent: float) -> float:
      return round(discounted, 2)
  
  
 +def apply_fixed_discount(amount: float, fixed_discount: float) -> float:
 +    """Apply fixed discount amount to an amount."""
++    if amount < 0:
++        raise ValueError("Amount cannot be negative")
 +    if fixed_discount < 0:
 +        raise ValueError("Fixed discount cannot be negative")
 +    if fixed_discount > amount:
@@ -175,7 +689,7 @@ index 820b53b..08f0a26 100644
  def apply_tax(amount: float, tax_rate: float) -> float:
      """Apply tax rate to an amount."""
      if amount < 0:
-@@ -28,7 +37,10 @@ def apply_tax(amount: float, tax_rate: float) -> float:
+@@ -28,13 +39,18 @@ def apply_tax(amount: float, tax_rate: float) -> float:
  
  
  def calculate_order_total(
@@ -187,7 +701,11 @@ index 820b53b..08f0a26 100644
  ) -> float:
      """Calculate the final order total.
  
-@@ -37,4 +49,5 @@ def calculate_order_total(
+-    The discount (0-100) is applied to the subtotal first; the tax rate is then
+-    applied to the discounted amount.
++    The percentage discount (0-100) is applied to the subtotal first, followed
++    by the fixed discount deduction; the tax rate is then applied to the
++    resulting discounted amount.
      """
      subtotal = calculate_subtotal(prices)
      discounted = apply_discount(subtotal, discount_percent)
@@ -195,7 +713,7 @@ index 820b53b..08f0a26 100644
 +    after_fixed = apply_fixed_discount(discounted, fixed_discount)
 +    return apply_tax(after_fixed, tax_rate)
 diff --git a/tests/test_calculator.py b/tests/test_calculator.py
-index 50eafad..c4f6add 100644
+index 50eafad..e0fe8e2 100644
 --- a/tests/test_calculator.py
 +++ b/tests/test_calculator.py
 @@ -2,6 +2,7 @@ import unittest
@@ -206,7 +724,7 @@ index 50eafad..c4f6add 100644
      apply_tax,
      calculate_order_total,
  )
-@@ -69,6 +70,26 @@ class TestCalculator(unittest.TestCase):
+@@ -69,6 +70,44 @@ class TestCalculator(unittest.TestCase):
          with self.assertRaises(ValueError):
              calculate_order_total([100.0], 0.0, -0.16)
  
@@ -214,10 +732,15 @@ index 50eafad..c4f6add 100644
 +        self.assertEqual(apply_fixed_discount(100.0, 15.0), 85.0)
 +        self.assertEqual(apply_fixed_discount(50.0, 0.0), 50.0)
 +        self.assertEqual(apply_fixed_discount(20.0, 20.0), 0.0)
++        self.assertEqual(apply_fixed_discount(100.0, 15.556), 84.44)
 +
 +    def test_apply_fixed_discount_negative(self):
 +        with self.assertRaises(ValueError):
 +            apply_fixed_discount(100.0, -10.0)
++        with self.assertRaises(ValueError):
++            apply_fixed_discount(-50.0, 10.0)
++        with self.assertRaises(ValueError):
++            apply_fixed_discount(-50.0, 0.0)
 +
 +    def test_apply_fixed_discount_exceeds_amount(self):
 +        with self.assertRaises(ValueError):
@@ -229,6 +752,19 @@ index 50eafad..c4f6add 100644
 +            calculate_order_total([100.0], discount_percent=10.0, tax_rate=0.16, fixed_discount=10.0),
 +            92.8,
 +        )
++
++    def test_calculate_order_total_fixed_discount_only(self):
++        # 100 subtotal -> default 0% discount = 100 -> fixed discount 15 = 85 -> default tax 0% = 85.0
++        self.assertEqual(calculate_order_total([100.0], fixed_discount=15.0), 85.0)
++
++    def test_calculate_order_total_negative_fixed_discount(self):
++        with self.assertRaises(ValueError):
++            calculate_order_total([100.0], fixed_discount=-5.0)
++
++    def test_calculate_order_total_fixed_discount_exceeds_balance(self):
++        # Subtotal 100, 50% discount leaves 50; fixed discount 60 exceeds remaining balance
++        with self.assertRaises(ValueError):
++            calculate_order_total([100.0], discount_percent=50.0, fixed_discount=60.0)
 +
  
  if __name__ == "__main__":
