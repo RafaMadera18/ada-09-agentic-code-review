@@ -1,4 +1,5 @@
-﻿657369f chore: refresh pr.diff and commits.txt
+﻿fa75c2d docs: humanize AI usage log, reflections and human review decisions
+657369f chore: refresh pr.diff and commits.txt
 301ee15 docs(ada09): finalize PR evidence, re-review report and AI usage log
 3a9b999 fix: address ADA-09 review findings
 cbef67d feat: implement CR-002
